@@ -16,7 +16,7 @@ Work is isolated on `codex/contextpr-handover`; the original Desktop/P1 checkout
 - [x] 9 Rules gate — 38 tests and typecheck. Single-word literal matches preserve email tokens until full masking.
 - [x] 10 Replaceable Claude/Ollama minimization and complete pipeline — 47 tests, typecheck. No-source denial verified. Real Claude check awaits the key location.
 - [x] 11 Scoped auto-merge rule, full notification, revoke — 48 tests and typecheck.
-- [ ] 12 MCP polish.
+- [x] 12 MCP polish — 50 tests and typecheck. Reporting before delivery is rejected; repeated identical reports are idempotent. The original test that reported a queued request was corrected to match the lifecycle.
 - [ ] 13 Local Inbox/dashboard with human approval controls.
 - [ ] 14 Acme demo and vendor configuration.
 - [ ] 15 Three-question local benchmark with honest provenance.
