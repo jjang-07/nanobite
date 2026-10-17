@@ -84,3 +84,11 @@ test('non-JSON success is a safe invalid-response error', async () => {
         return true;
     });
 });
+test('a hung Primitive call is abandoned shortly after its own wait, not after a fixed 35 seconds', async () => {
+    const hang = (async (_url: any, init: RequestInit = {}) => new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(init.signal!.reason)))) as typeof fetch;
+    const client = createPrimitiveClient('prim_test', hang, { slackMs: 50 });
+    const t0 = Date.now();
+    await assert.rejects(() => client.listInbound('sdk-help@y.primitive.email', '2026-10-17T18:00:00Z|00000000-0000-0000-0000-000000000000', 0), /timeout|abort/i);
+    await assert.rejects(() => client.awaitReply('sent_1', 1000), /timeout|abort/i);
+    assert.ok(Date.now() - t0 < 2500, `took ${Date.now() - t0} ms`);
+});

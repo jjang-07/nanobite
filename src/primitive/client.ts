@@ -30,10 +30,15 @@ export class PrimitiveError extends Error {
 }
 const result = (d: any): SendResult => ({ sentEmailId: d.id, status: d.status, ...(d.delivery_status ? { deliveryStatus: d.delivery_status } : {}) });
 const summary = (d: any): InboundSummary => ({ id: d.id, threadId: d.thread_id ?? null, sender: d.sender ?? d.from_email, recipient: d.recipient ?? d.to_email, subject: d.subject ?? null, receivedAt: d.received_at ?? d.created_at, snippet: d.snippet ?? null, fyi: d.fyi === true, automated: d.automated === true });
-export function createPrimitiveClient(apiKey: string, fetchImpl: typeof fetch = fetch): PrimitiveClient {
-    async function request(method: string, path: string, query?: Record<string, string>, body?: unknown, key?: string) {
+/**
+ * Each call is abandoned `slackMs` after the server-side wait it asked for, so one hung request
+ * stalls the sequential worker cycle for seconds, not a fixed 35 s (observed once live, 2026-10-17).
+ */
+export function createPrimitiveClient(apiKey: string, fetchImpl: typeof fetch = fetch, options: { slackMs?: number } = {}): PrimitiveClient {
+    const slackMs = options.slackMs ?? 10000;
+    async function request(method: string, path: string, query?: Record<string, string>, body?: unknown, key?: string, serverWaitMs = 0) {
         const url = 'https://api.primitive.dev/v1' + path + (query ? '?' + new URLSearchParams(query) : '');
-        const res = await fetchImpl(url, { method, headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', ...(key ? { 'Idempotency-Key': key } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(35000) });
+        const res = await fetchImpl(url, { method, headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', ...(key ? { 'Idempotency-Key': key } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(serverWaitMs + slackMs) });
         const retryAfter = res.headers.get('retry-after');
         let json: any;
         try {
@@ -54,14 +59,16 @@ export function createPrimitiveClient(apiKey: string, fetchImpl: typeof fetch = 
         return json;
     }
     return {
-        async sendMail(i) { const j = await request('POST', '/send-mail', undefined, { from: i.from, to: i.to, subject: i.subject, body_text: i.bodyText, in_reply_to: i.inReplyTo, references: i.references, wait: i.wait, wait_timeout_ms: i.wait ? 30000 : undefined }, i.idempotencyKey); return result(j.data); },
-        async replyToEmail(id, i) { return result((await request('POST', `/emails/${encodeURIComponent(id)}/reply`, undefined, { body_text: i.bodyText, wait: i.wait }, i.idempotencyKey)).data); },
+        async sendMail(i) { const j = await request('POST', '/send-mail', undefined, { from: i.from, to: i.to, subject: i.subject, body_text: i.bodyText, in_reply_to: i.inReplyTo, references: i.references, wait: i.wait, wait_timeout_ms: i.wait ? 30000 : undefined }, i.idempotencyKey, i.wait ? 30000 : 0); return result(j.data); },
+        async replyToEmail(id, i) { return result((await request('POST', `/emails/${encodeURIComponent(id)}/reply`, undefined, { body_text: i.bodyText, wait: i.wait }, i.idempotencyKey, i.wait ? 30000 : 0)).data); },
         async awaitReply(id, waitMs) {
-            const d = (await request('GET', `/sent-emails/${encodeURIComponent(id)}/reply`, { wait: 'true', wait_timeout_ms: String(clamp(waitMs, 1000, 30000)) })).data.reply;
+            const wait = clamp(waitMs, 1000, 30000);
+            const d = (await request('GET', `/sent-emails/${encodeURIComponent(id)}/reply`, { wait: 'true', wait_timeout_ms: String(wait) }, undefined, undefined, wait)).data.reply;
             return d ? { id: d.id, threadId: d.thread_id ?? null, replyToSentEmailId: d.reply_to_sent_email_id ?? null, fromEmail: d.from_email, toEmail: d.to_email, subject: d.subject ?? null, bodyText: d.body_text ?? null, receivedAt: d.received_at ?? null, fyi: d.fyi === true, senderVerified: d.sender_verified === true } : null;
         },
         async listInbound(recipient, since, waitSeconds) {
-            const j = await request('GET', '/emails', { recipient, limit: since ? '50' : '1', ...(since ? { since, wait: String(clamp(waitSeconds, 0, 30)) } : {}) });
+            const wait = since ? clamp(waitSeconds, 0, 30) : 0;
+            const j = await request('GET', '/emails', { recipient, limit: since ? '50' : '1', ...(since ? { since, wait: String(wait) } : {}) }, undefined, undefined, wait * 1000);
             const items: InboundSummary[] = j.data.map(summary);
             const last = items.at(-1);
             return { items, nextSince: j.meta?.cursor ?? (last ? `${last.receivedAt}|${last.id}` : since) };

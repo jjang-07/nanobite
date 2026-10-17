@@ -1,9 +1,21 @@
 import type { Decision } from '../types.ts';
+/** True at a line where a mail client starts its signature, attribution or quoted original. */
+function isReplyTrailer(lines: string[], i: number): boolean {
+    const l = lines[i];
+    return /^On .+ wrote:\s*$/.test(l)
+        // Gmail mobile wraps a long attribution: "On <date>" then "<sender> wrote:" on the next line.
+        || (/^On .+/.test(l) && lines.slice(i + 1, i + 3).some(s => /wrote:\s*$/.test(s)))
+        || /^-{2,}\s*Original Message/i.test(l) || /^-- $/.test(l)
+        || /^Sent from (my |Outlook|Mail for )/i.test(l) || /^Get Outlook for /i.test(l)
+        // Outlook desktop separates the quoted original with a line of underscores.
+        || /^_{10,}\s*$/.test(l)
+        || (/^From: .+$/.test(l) && lines.slice(i + 1, i + 4).some(s => /^Sent: /.test(s)));
+}
 export function stripQuotedReply(body: string): string {
     const lines = body.replace(/\r\n/g, '\n').split('\n'), out: string[] = [];
     for (let i = 0; i < lines.length; i++) {
         const l = lines[i];
-        if (/^On .+ wrote:\s*$/.test(l) || /^-{2,}\s*Original Message/i.test(l) || /^Sent from my /i.test(l) || /^-- $/.test(l) || (/^From: .+$/.test(l) && lines.slice(i + 1, i + 4).some(s => /^Sent: /.test(s))))
+        if (isReplyTrailer(lines, i))
             break;
         if (!/^>/.test(l))
             out.push(l);

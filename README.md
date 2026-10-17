@@ -2,7 +2,7 @@
 
 ContextPR lets a coding agent ask another company's engineering agent for one missing answer. The responder searches a session transcript, removes protected details, drafts a small answer, and presents the exact words for human review. The requester receives only the approved capsule and can report whether it fixed the problem.
 
-The current demo uses a **local inbox for requests and human approvals**. Claude is the selected demo model; Ollama is an optional local alternative. Live email through Primitive remains disabled. The Acme scenario and Bob transcript are synthetic fixtures.
+Mail runs either through **live Primitive email** (`MAIL_PROVIDER=primitive`, used for the hackathon demo) or a **local inbox** in the dashboard (`MAIL_PROVIDER=local`, no email service). Claude is the selected demo model; Ollama is an optional local alternative. The Acme scenario and Bob transcript are synthetic fixtures.
 
 ## Start the demo
 
@@ -27,6 +27,25 @@ Open [the local Inbox](http://127.0.0.1:8787). `seed` loads only the included sy
 Leave the default responder and topic, then open the request when it needs review. A draft is never released just because it appears in the dashboard. Use **Approve draft**, **Send edited answer**, **Deny request**, or **Approve always**. Edited answers are complete replacement text. Inspect the exact approved text and timeline after delivery.
 
 The dashboard binds to `127.0.0.1` and is intended for **one trusted local operator** demonstrating both companies. It has same-origin form and CSRF checks, but no separate user accounts or multiuser authentication. Do not expose it through a public tunnel or use it as an authenticated team service.
+
+## Use live Primitive email
+
+Set these in your ignored `.env`. Any local part at your managed subdomain receives mail without being created first.
+
+```sh
+MAIL_PROVIDER=primitive
+PRIMITIVE_API_KEY=prim_...                                # Primitive dashboard, Settings, API keys
+REQUESTER_IDENTITY=alice-agent@<subdomain>.primitive.email
+RESPONDER_IDENTITY=sdk-help@<subdomain>.primitive.email
+APPROVER_EMAIL=<the address Bob reads on his phone>
+POLL_WAIT_SECONDS=3
+```
+
+Then `npm run reset && npm run seed && npm start`. In this mode Bob approves by replying to the approval email with one word: `approve`, `approve always`, `deny <reason>`, or `edit` followed by the full replacement text. The dashboard shows every Context PR but has no approve buttons; the email reply is the decision. Replies from Gmail, Apple Mail, and Outlook, including their quoted original and mobile signatures, are recognized. Any extra words after `approve` are refused rather than guessed.
+
+A new Primitive account sends only to Primitive addresses, members of your organization (the account's own signup email counts), and addresses that have already written to you. Use the account owner's address as `APPROVER_EMAIL`, or have the approver email the responder address once first. A blocked send fails with `recipient_not_allowed`, is recorded as an error event in that request's timeline, and is retried by the worker until the address is allowed.
+
+Verified live on 2026-10-17 with `fair-fly.primitive.email`: request, draft, approval email, approver reply, and capsule round trip in 17 seconds end to end; a delivery check to the account owner's address was accepted with SMTP 250.
 
 ## Use Ollama instead
 
@@ -138,7 +157,7 @@ In a new agent turn, use requests such as `$impeccable polish src/dashboard/rend
 ## What remains unverified
 
 - Claude is verified on one laptop: key authentication, the three-question benchmark, and one live rehearsal through the real worker, dashboard, and MCP stdio server, ending red to green on the Acme test. The approval in that rehearsal was clicked by the operator through the dashboard form, not by a second person. Each other laptop needs its own ignored `.env`.
-- Primitive live delivery, account entitlements, authentic email replies, and real cursor behavior remain unverified and disabled. A credential-free synthetic endpoint check established schema compatibility only.
+- Primitive is verified live for the full loop between Primitive addresses, including the approver's reply. A reply typed by a person in a phone mail app to a non-Primitive address has not yet been rehearsed; do one before the demo.
 - A second computer, Bob's physical phone, three human rehearsals, a backup video, organizer confirmation, and hackathon submission have not been completed by local software tests. No backup video or phone approval is claimed.
 
 The original [HANDOVER.md](HANDOVER.md) remains unchanged. User-authorized changes and evidence are recorded in [PLAN.md](PLAN.md). The direct Zod dependency is version 4 because MCP server 2.3.1 requires its newer Standard Schema JSON interface; the handover's older Zod version did not type-check with the installed MCP SDK.

@@ -43,3 +43,19 @@ Work continued on branch `claude/contextpr-continue`, created from `origin/codex
 - Fixed: the Claude adapter now records real prompt and output token usage, and the benchmark report labels model counts by provider instead of always saying "Ollama counts". Tests added first: 95 tests pass, typecheck clean.
 
 Still open: Primitive live email (disabled; needs an account and key), the demo's token-ratio story (the fixture is short by design), and every physical item in the checklist above.
+
+## Primitive enabled on 2026-10-17 (user request)
+
+The user created a Primitive account (`fair-fly.primitive.email`, developer plan, $100 sponsor credit) and asked to turn on live email. The key is stored only in the ignored `.env`.
+
+- Account check: receiving ready on the managed subdomain; stored-only mode is sufficient because the worker reads mail through the API. Entitlements allow sending to Primitive addresses, organization members, known addresses, and confirmed or opted-in domains, not arbitrary addresses.
+- Any local part works without creation: mail to `bob@fair-fly.primitive.email` arrived immediately.
+- Full live loop on a throwaway database: `request_context` through MCP; the request email traveled `alice-agent@` → `sdk-help@`; Claude drafted; the approval email reached `bob@`; a reply of `approve` sent through Primitive's reply endpoint was accepted as trusted; the capsule traveled back to `alice-agent@` and `get_context_request` returned it. 17 seconds end to end, 0.5 seconds from reply to delivery. The approver reply was sent by the operator through the API, not typed by a person.
+- A delivery check from `sdk-help@` to the Primitive account owner's own signup address was accepted with SMTP 250. `.env` now uses that address as `APPROVER_EMAIL`.
+- Bugs found live and fixed test-first:
+  - Primitive's `since` cursor returns the newest email again (server time has microseconds, API timestamps have milliseconds). A worker started on a non-empty inbox would have replayed the newest old request and emailed a second approval. The baseline now marks pre-existing mail as seen.
+  - One inbound poll hung until the fixed 35-second client timeout, which would freeze the sequential worker cycle on stage. Each Primitive call now times out 10 seconds after its own server-side wait.
+  - Phone mail clients: a wrapped Gmail attribution line, "Get Outlook for iOS", "Sent from Outlook" and the Outlook underscore separator would have made a one-word `approve` unreadable. These trailers are now stripped; extra human words after `approve` are still refused.
+- 99 tests pass; typecheck clean.
+
+Still open: one rehearsal where a person replies from a phone to the approver address (DMARC sender verification of a real external reply is untested), and the physical checklist.
