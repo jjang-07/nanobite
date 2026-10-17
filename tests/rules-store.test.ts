@@ -1,0 +1,10 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {setup,queued,incoming,config} from './helpers.ts';import {getPr} from '../src/db/db.ts';import {pollInbound,processReceived,pollApprovals} from '../src/pipeline/responder.ts';import {findRule} from '../src/approval/rules-store.ts';
+test('approve always is scoped auto-merge, full notification, revoke, then human again',async()=>{
+ const {db,mail,deps}=setup();async function request(id:string){queued(db,id);mail.deliverInbound(incoming(id));await pollInbound(db,deps);await processReceived(db,deps);}
+ await request('cpr_first');mail.deliverReply(getPr(db,'cpr_first')!.approval_sent_email_id!,{bodyText:'approve always'});await pollApprovals(db,deps);
+ assert.equal(getPr(db,'cpr_first')?.state,'approved');assert.ok(findRule(db,config.RESPONDER_IDENTITY,config.REQUESTER_IDENTITY,'acme-sdk/retries'));assert.equal(findRule(db,config.RESPONDER_IDENTITY,'other@startup.local','acme-sdk/retries'),null);
+ await request('cpr_second');const p=getPr(db,'cpr_second')!;assert.equal(p.decision,'auto');assert.equal(p.approval_sent_email_id,null);const n=db.prepare("SELECT sent_email_id FROM sent_emails WHERE pr_id=? AND purpose='notification'").get(p.id)!.sent_email_id as string;
+ const notification=mail.sent[Number(n.split('_')[1])-1];assert.ok(notification.bodyText.includes(p.approved_text!));assert.match(notification.bodyText,/revoke/);
+ mail.deliverReply(n,{bodyText:'revoke'});await pollApprovals(db,deps);assert.equal(findRule(db,config.RESPONDER_IDENTITY,config.REQUESTER_IDENTITY,'acme-sdk/retries'),null);assert.equal(db.prepare("SELECT count(*) n FROM sent_emails WHERE purpose='ack'").get()?.n,1);
+ await request('cpr_third');assert.equal(getPr(db,'cpr_third')?.state,'awaiting_approval');
+});

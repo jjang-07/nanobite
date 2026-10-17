@@ -22,7 +22,7 @@ export async function pollInbound(db:DatabaseSync,deps:Deps){
 }
 
 import type {PrRow} from '../db/db.ts';import type {ReplyEmail} from '../primitive/client.ts';import type {Decision,Removal} from '../types.ts';
-import {recordSent,recordError} from './requester.ts';import {parseDecision,buildApprovalEmail,buildClarificationEmail} from '../gates/approval.ts';
+import {recordSent,recordError} from './requester.ts';import {parseDecision,buildApprovalEmail,buildClarificationEmail,buildNotificationEmail,buildAckEmail} from '../gates/approval.ts';
 export function trustedReply(r:ReplyEmail,sentId:string,from:string,to:string){return r.senderVerified&&!r.fyi&&r.fromEmail.toLowerCase()===from.toLowerCase()&&r.toEmail.toLowerCase()===to.toLowerCase()&&r.replyToSentEmailId===sentId;}
 export async function sendApproval(db:DatabaseSync,deps:Deps,p:PrRow){
  const r=await deps.clientFor(p.responder_identity).sendMail({from:p.responder_identity,to:deps.config.APPROVER_EMAIL,...buildApprovalEmail(p,deps.config),idempotencyKey:`${p.id}:approval:1`});
@@ -41,7 +41,8 @@ export async function processReceived(db:DatabaseSync,deps:Deps){for(const p of 
  const flagged=draft.flagged.map(f=>applyRules(f,rules).text);
  updatePr(db,p.id,{draft_answer:answer.text,draft_flagged:JSON.stringify(flagged),removals:JSON.stringify(removals),matched_source_ids:JSON.stringify(excerpts.map(e=>e.id))});
  addEvent(db,p.id,'rules_applied',{removals});addEvent(db,p.id,'drafted',{confidence:draft.confidence,why_relevant:applyRules(draft.why_relevant,rules).text,used_excerpt_ids:draft.used_excerpt_ids});
- await sendApproval(db,deps,getPr(db,p.id)!);
+ const rule=findRule(db,p.responder_identity,p.requester_identity,p.topic);
+ if(rule){addEvent(db,p.id,'auto_merged',{rule_id:rule.id});await finalize(db,deps,getPr(db,p.id)!,'auto');await sendNotification(db,deps,getPr(db,p.id)!,rule);}else await sendApproval(db,deps,getPr(db,p.id)!);
  }catch(e){recordError(db,p.id,e);updatePr(db,p.id,{state:'failed',decision_reason:e instanceof Error?e.message:'draft_failed'});}}}
 export async function sendFinalized(db:DatabaseSync,deps:Deps,p:PrRow){
  if(!p.request_inbound_email_id||p.capsule_sent_email_id)return;
@@ -52,6 +53,7 @@ export async function sendFinalized(db:DatabaseSync,deps:Deps,p:PrRow){
 }
 export async function finalize(db:DatabaseSync,deps:Deps,p:PrRow,decision:Decision,text?:string,reason?:string,approver=deps.config.APPROVER_EMAIL){
  const denied=decision==='deny';
+ if(decision==='approve_always')createRule(db,p.responder_identity,p.requester_identity,p.topic,approver,p.id);
  updatePr(db,p.id,{state:denied?'denied':'approved',decision,decision_reason:reason??null,approved_text:denied?null:decision==='edit'?text!:p.draft_answer,approver,decided_at:nowIso()});addEvent(db,p.id,'decision',{decision,approver});
  if(p.approval_sent_email_id)db.prepare('UPDATE sent_emails SET handled=1 WHERE sent_email_id=?').run(p.approval_sent_email_id);
  await sendFinalized(db,deps,getPr(db,p.id)!);
@@ -65,7 +67,21 @@ export async function pollApprovals(db:DatabaseSync,deps:Deps){await Promise.all
   const sent=await deps.clientFor(p.responder_identity).sendMail({from:p.responder_identity,to:p.approver??deps.config.APPROVER_EMAIL,...buildClarificationEmail(p),idempotencyKey:`${p.id}:clarification:${attempt}`});
   recordSent(db,sent.sentEmailId,p.id,'clarification',p.responder_identity);db.prepare('UPDATE sent_emails SET handled=1 WHERE sent_email_id=?').run(id);updatePr(db,p.id,{approval_sent_email_id:sent.sentEmailId});
  }
- }catch(e){recordError(db,p.id,e);}}));}
+ }catch(e){recordError(db,p.id,e);}}));await pollNotifications(db,deps);}
 
 import {searchSources} from '../indexer/index.ts';
 import {applyRules,loadRules,mergeRemovals} from '../gates/rules.ts';
+
+import {findRule,createRule,revokeRule} from '../approval/rules-store.ts';
+import type {AutoRule} from '../approval/rules-store.ts';
+export async function sendNotification(db:DatabaseSync,deps:Deps,p:PrRow,rule:AutoRule){
+ const r=await deps.clientFor(p.responder_identity).sendMail({from:p.responder_identity,to:p.approver??deps.config.APPROVER_EMAIL,...buildNotificationEmail(p,rule),idempotencyKey:`${p.id}:notification:1`});recordSent(db,r.sentEmailId,p.id,'notification',p.responder_identity);
+}
+async function pollNotifications(db:DatabaseSync,deps:Deps){
+ const cutoff=new Date(Date.now()-86400000).toISOString();const rows=db.prepare("SELECT * FROM sent_emails WHERE purpose='notification' AND handled=0 AND created_at>=?").all(cutoff);
+ await Promise.all(rows.map(async row=>{const p=getPr(db,String(row.pr_id));if(!p)return;try{
+ const id=String(row.sent_email_id),r=await deps.clientFor(p.responder_identity).awaitReply(id,1000);if(!r||!trustedReply(r,id,p.approver??deps.config.APPROVER_EMAIL,p.responder_identity)||parseDecision(r.bodyText).decision!=='revoke')return;
+ const event=db.prepare("SELECT detail FROM events WHERE pr_id=? AND kind='auto_merged' ORDER BY id DESC LIMIT 1").get(p.id);const ruleId=JSON.parse(String(event?.detail??'{}')).rule_id;if(!ruleId)return;
+ revokeRule(db,ruleId);const ack=await deps.clientFor(p.responder_identity).sendMail({from:p.responder_identity,to:r.fromEmail,...buildAckEmail(p),idempotencyKey:`${p.id}:ack:1`});recordSent(db,ack.sentEmailId,p.id,'ack',p.responder_identity,1);db.prepare('UPDATE sent_emails SET handled=1 WHERE sent_email_id=?').run(id);addEvent(db,p.id,'rule_revoked',{rule_id:ruleId});
+ }catch(e){recordError(db,p.id,e);}}));
+}

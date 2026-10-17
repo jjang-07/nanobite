@@ -15,7 +15,7 @@ Work is isolated on `codex/contextpr-handover`; the original Desktop/P1 checkout
 - [x] 8 Transcript indexer and fixture — 34 tests, typecheck. Fixture is synthetic; thinking never enters indexed text.
 - [x] 9 Rules gate — 38 tests and typecheck. Single-word literal matches preserve email tokens until full masking.
 - [x] 10 Replaceable Claude/Ollama minimization and complete pipeline — 47 tests, typecheck. No-source denial verified. Real Claude check awaits the key location.
-- [ ] 11 Auto-merge rule, notification, revoke.
+- [x] 11 Scoped auto-merge rule, full notification, revoke — 48 tests and typecheck.
 - [ ] 12 MCP polish.
 - [ ] 13 Local Inbox/dashboard with human approval controls.
 - [ ] 14 Acme demo and vendor configuration.
