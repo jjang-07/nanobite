@@ -12,7 +12,7 @@ Work is isolated on `codex/contextpr-handover`; the original Desktop/P1 checkout
 - [x] 5 Worker — 17 tests, typecheck; `bdf23a0`. Establish cursor before first send and persist dedup only after processing succeeds.
 - [x] 6 Reply parser — 23 tests, typecheck; `bd3ec8c`.
 - [x] 7 Approval walking skeleton + local persistent inbox — 32 tests and typecheck, full local transport with explicit simulated human reply. Sender verification guards real approval replies.
-- [ ] 8 Transcript indexer and fixture.
+- [x] 8 Transcript indexer and fixture — 34 tests, typecheck. Fixture is synthetic; thinking never enters indexed text.
 - [ ] 9 Rules gate.
 - [ ] 10 Local Ollama minimization gate and complete pipeline.
 - [ ] 11 Auto-merge rule, notification, revoke.
