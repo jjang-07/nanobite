@@ -27,3 +27,5 @@ External/physical checklist: organizer confirmation, hackathon submission, other
 2026-10-17: User requested Impeccable and UI polish across the platform. Official project-local skill installed; refinements preserve the three gates and provider choices.
 
 Final software validation: 92 automated tests, TypeScript checks, real local-model benchmark, and red/green/restored-red mock SDK test. Impeccable UI polish is a separate user-authorized follow-up commit. Claude live verification still requires the local key.
+
+UI follow-up verification: official Impeccable source scan returned zero findings; inbox and request detail had no horizontal overflow at 320, 390, 800 and 1440 CSS pixels. Browser request submission, queued-to-review state, edit preservation on Refresh, explicit discard, and keyboard focus were checked. A synthetic UI verification request is left awaiting a real decision. No new approval was simulated through the browser.
