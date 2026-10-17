@@ -19,7 +19,7 @@ Work is isolated on `codex/contextpr-handover`; the original Desktop/P1 checkout
 - [x] 12 MCP polish — 50 tests and typecheck. Reporting before delivery is rejected; repeated identical reports are idempotent. The original test that reported a queued request was corrected to match the lifecycle.
 - [x] 13 Local Inbox/dashboard — 55 tests, typecheck, browser rendering checked. Same-origin and CSRF protection; submissions enter the durable local inbox.
 - [x] 14 Acme demo — red (2 charges), one-line fix green (1 charge), restored red in git; typecheck passed. ContextPR registered with installed Codex using absolute paths. Separate laptop/Claude Code and phone flow remain unverified.
-- [ ] 15 Three-question local benchmark with honest provenance.
+- [x] 15 Benchmark — 3 harness tests, 3 real Ollama qwen3:4b local workflow runs (1.572/1.168/1.585 s). Human actions simulated; Claude and source/capsule token counts unverified. Fix-location answer incomplete; workflow pass is not semantic quality certification.
 - [ ] 16 Restart hardening and runbook.
 
 External/physical checklist: organizer confirmation, hackathon submission, other team devices, Bob's phone, backup video and three human rehearsals cannot be confirmed from local tests. Primitive remains disabled. Claude demo use is authorized but not yet verified. No invented token metrics, video, human approvals or model results.
