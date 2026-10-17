@@ -15,6 +15,11 @@ export interface PrimitiveClient {
     getEmail(id: string): Promise<InboundDetail>;
 }
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+/** "Name <addr@x>" → "addr@x". Reply senders arrive as the raw From header (Outlook, verified live). */
+export function bareAddress(value: string | null | undefined): string {
+    const s = String(value ?? '').trim(), angle = s.match(/<([^<>\s]+@[^<>\s]+)>\s*$/);
+    return angle ? angle[1] : s;
+}
 export class PrimitiveError extends Error {
     status: number;
     code: string;
@@ -29,7 +34,7 @@ export class PrimitiveError extends Error {
     }
 }
 const result = (d: any): SendResult => ({ sentEmailId: d.id, status: d.status, ...(d.delivery_status ? { deliveryStatus: d.delivery_status } : {}) });
-const summary = (d: any): InboundSummary => ({ id: d.id, threadId: d.thread_id ?? null, sender: d.sender ?? d.from_email, recipient: d.recipient ?? d.to_email, subject: d.subject ?? null, receivedAt: d.received_at ?? d.created_at, snippet: d.snippet ?? null, fyi: d.fyi === true, automated: d.automated === true });
+const summary = (d: any): InboundSummary => ({ id: d.id, threadId: d.thread_id ?? null, sender: bareAddress(d.sender ?? d.from_email), recipient: bareAddress(d.recipient ?? d.to_email), subject: d.subject ?? null, receivedAt: d.received_at ?? d.created_at, snippet: d.snippet ?? null, fyi: d.fyi === true, automated: d.automated === true });
 /**
  * Each call is abandoned `slackMs` after the server-side wait it asked for, so one hung request
  * stalls the sequential worker cycle for seconds, not a fixed 35 s (observed once live, 2026-10-17).
@@ -64,7 +69,7 @@ export function createPrimitiveClient(apiKey: string, fetchImpl: typeof fetch = 
         async awaitReply(id, waitMs) {
             const wait = clamp(waitMs, 1000, 30000);
             const d = (await request('GET', `/sent-emails/${encodeURIComponent(id)}/reply`, { wait: 'true', wait_timeout_ms: String(wait) }, undefined, undefined, wait)).data.reply;
-            return d ? { id: d.id, threadId: d.thread_id ?? null, replyToSentEmailId: d.reply_to_sent_email_id ?? null, fromEmail: d.from_email, toEmail: d.to_email, subject: d.subject ?? null, bodyText: d.body_text ?? null, receivedAt: d.received_at ?? null, fyi: d.fyi === true, senderVerified: d.sender_verified === true } : null;
+            return d ? { id: d.id, threadId: d.thread_id ?? null, replyToSentEmailId: d.reply_to_sent_email_id ?? null, fromEmail: bareAddress(d.from_email), toEmail: bareAddress(d.to_email), subject: d.subject ?? null, bodyText: d.body_text ?? null, receivedAt: d.received_at ?? null, fyi: d.fyi === true, senderVerified: d.sender_verified === true } : null;
         },
         async listInbound(recipient, since, waitSeconds) {
             const wait = since ? clamp(waitSeconds, 0, 30) : 0;
@@ -75,7 +80,7 @@ export function createPrimitiveClient(apiKey: string, fetchImpl: typeof fetch = 
         },
         async getEmail(id) {
             const d = (await request('GET', `/emails/${encodeURIComponent(id)}`)).data;
-            return { ...summary(d), bodyText: d.body_text ?? d.parsed?.body_text ?? null, bodyHtml: d.body_html ?? d.parsed?.body_html ?? null, fromEmail: d.from_email, toEmail: d.to_email, replyToSentEmailId: d.reply_to_sent_email_id ?? null, inReplyTo: d.parsed?.in_reply_to ?? [], references: d.parsed?.references ?? [], attachments: (d.parsed?.attachments ?? []).map((a: any) => ({ filename: a.filename ?? null, contentType: a.content_type ?? null, sizeBytes: a.size_bytes, partIndex: a.part_index })) };
+            return { ...summary(d), bodyText: d.body_text ?? d.parsed?.body_text ?? null, bodyHtml: d.body_html ?? d.parsed?.body_html ?? null, fromEmail: bareAddress(d.from_email), toEmail: bareAddress(d.to_email), replyToSentEmailId: d.reply_to_sent_email_id ?? null, inReplyTo: d.parsed?.in_reply_to ?? [], references: d.parsed?.references ?? [], attachments: (d.parsed?.attachments ?? []).map((a: any) => ({ filename: a.filename ?? null, contentType: a.content_type ?? null, sizeBytes: a.size_bytes, partIndex: a.part_index })) };
         }
     };
 }

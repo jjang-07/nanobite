@@ -34,10 +34,14 @@ export async function pollInbound(db: DatabaseSync, deps: Deps) {
 }
 import type { PrRow } from '../db/db.ts';
 import type { ReplyEmail } from '../primitive/client.ts';
+import { bareAddress } from '../primitive/client.ts';
 import type { Decision, Removal } from '../types.ts';
 import { recordSent, recordError, assertSendAccepted } from './requester.ts';
 import { parseDecision, buildApprovalEmail, buildClarificationEmail, buildNotificationEmail, buildAckEmail } from '../gates/approval.ts';
-export function trustedReply(r: ReplyEmail, sentId: string, from: string, to: string) { return r.senderVerified && !r.fyi && r.fromEmail.toLowerCase() === from.toLowerCase() && r.toEmail.toLowerCase() === to.toLowerCase() && r.replyToSentEmailId === sentId; }
+export function trustedReply(r: ReplyEmail, sentId: string, from: string, to: string) {
+    const same = (a: string, b: string) => bareAddress(a).toLowerCase() === bareAddress(b).toLowerCase();
+    return r.senderVerified && !r.fyi && same(r.fromEmail, from) && same(r.toEmail, to) && r.replyToSentEmailId === sentId;
+}
 export async function sendApproval(db: DatabaseSync, deps: Deps, p: PrRow) {
     const r = await deps.clientFor(p.responder_identity).sendMail({ from: p.responder_identity, to: deps.config.APPROVER_EMAIL, ...buildApprovalEmail(p, deps.config), idempotencyKey: `${p.id}:approval:1` });
     assertSendAccepted(r);

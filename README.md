@@ -157,7 +157,7 @@ In a new agent turn, use requests such as `$impeccable polish src/dashboard/rend
 ## What remains unverified
 
 - Claude is verified on one laptop: key authentication, the three-question benchmark, and one live rehearsal through the real worker, dashboard, and MCP stdio server, ending red to green on the Acme test. The approval in that rehearsal was clicked by the operator through the dashboard form, not by a second person. Each other laptop needs its own ignored `.env`.
-- Primitive is verified live for the full loop between Primitive addresses, including the approver's reply. A reply typed by a person in a phone mail app to a non-Primitive address has not yet been rehearsed; do one before the demo.
+- Primitive is verified live end to end, including a one-word `Approve` typed by a person in Outlook on a phone from a non-Primitive address (DMARC passed, sender verified). Rehearse once more on the demo phone before going on stage.
 - A second computer, Bob's physical phone, three human rehearsals, a backup video, organizer confirmation, and hackathon submission have not been completed by local software tests. No backup video or phone approval is claimed.
 
 The original [HANDOVER.md](HANDOVER.md) remains unchanged. User-authorized changes and evidence are recorded in [PLAN.md](PLAN.md). The direct Zod dependency is version 4 because MCP server 2.3.1 requires its newer Standard Schema JSON interface; the handover's older Zod version did not type-check with the installed MCP SDK.

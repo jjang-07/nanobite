@@ -92,3 +92,10 @@ test('a hung Primitive call is abandoned shortly after its own wait, not after a
     await assert.rejects(() => client.awaitReply('sent_1', 1000), /timeout|abort/i);
     assert.ok(Date.now() - t0 < 2500, `took ${Date.now() - t0} ms`);
 });
+test('reply senders with a display name map to the bare address (Outlook reply, verified live 2026-10-17)', async () => {
+    const client = createPrimitiveClient('prim_test', stubFetch(() => ({ status: 200, body: { success: true, data: { sent_email_id: 'sent_1', waited: true, timed_out: false,
+        reply: { id: 'in_9', thread_id: 't1', reply_to_sent_email_id: 'sent_1', from_email: 'Bob Example <Bob.Example@Stanford.edu>', to_email: 'ContextPR <sdk-help@y.primitive.email>', subject: 'Re: x', body_text: 'Approve', body_html: null, received_at: '2026-10-17T23:53:09Z', status: 'received', sender_verified: true, sender_matches_recipient: true, fyi: false, auth: {} } } } })));
+    const r = await client.awaitReply('sent_1', 5000);
+    assert.equal(r?.fromEmail, 'Bob.Example@Stanford.edu');
+    assert.equal(r?.toEmail, 'sdk-help@y.primitive.email');
+});

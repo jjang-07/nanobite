@@ -58,4 +58,6 @@ The user created a Primitive account (`fair-fly.primitive.email`, developer plan
   - Phone mail clients: a wrapped Gmail attribution line, "Get Outlook for iOS", "Sent from Outlook" and the Outlook underscore separator would have made a one-word `approve` unreadable. These trailers are now stripped; extra human words after `approve` are still refused.
 - 99 tests pass; typecheck clean.
 
-Still open: one rehearsal where a person replies from a phone to the approver address (DMARC sender verification of a real external reply is untested), and the physical checklist.
+Phone rehearsal: the account owner replied `Approve` from Outlook on a phone. Primitive verified the sender (SPF, DKIM and DMARC pass), but the worker silently ignored it because reply senders arrive as the raw From header, `Name <address>`. Fixed test-first: Primitive addresses are reduced to the bare address when mapped and again in the trust check, and a display name containing a different address is still rejected. After a restart the waiting reply was accepted and the capsule delivered. 101 tests pass.
+
+Still open: the physical checklist.
