@@ -1,8 +1,8 @@
 # ContextPR benchmark
 
-Generated: 2026-10-17T23:04:02.860Z (UTC).
+Generated: 2026-10-17T23:35:21.444Z (UTC).
 
-Model: **ollama / qwen3:4b**. Claude API drafting and Claude token counts remain **unverified**; no Claude key was available for this run.
+Model: **anthropic / claude-opus-5-5**. Claude drafting was exercised by this run.
 
 Result: **3 passed, 0 failed**. Passing means local workflow/gate assertions passed; it is not a general answer-quality evaluation.
 
@@ -14,23 +14,26 @@ Request → capsule timing includes real model work and immediate simulated revi
 
 | Question | Workflow | Extracted source characters | Capsule characters | Source tokens | Capsule tokens | Request → capsule (s) | Simulated reply characters |
 |---|---|---:|---:|---:|---:|---:|---:|
-| Retries / idempotency | passed | 1853 | 171 | N/A | N/A | 1.572 | 7 |
-| Timeout configuration | passed | 1853 | 158 | N/A | N/A | 1.168 | 7 |
-| Fix location | passed | 1853 | 25 | N/A | N/A | 1.585 | 7 |
+| Retries / idempotency | passed | 1853 | 654 | 760 | 272 | 8.049 | 7 |
+| Timeout configuration | passed | 1853 | 535 | 760 | 211 | 4.090 | 7 |
+| Fix location | passed | 1853 | 393 | 760 | 150 | 3.843 | 7 |
 
 Character counts are Unicode code points, not tokens. The source baseline is all extracted session text, excluding thinking and bookkeeping blocks.
 
-Source and capsule token counts are N/A. No character-based token estimates or compression claims are substituted.
+Token counts, when available, come from Anthropic `messages.countTokens` with the configured model and a single user message containing the extracted source or capsule. They are API input counts for that measurement request, not total billed drafting usage.
+- Retries / idempotency: source/capsule token count quotient 2.79×.
+- Timeout configuration: source/capsule token count quotient 3.60×.
+- Fix location: source/capsule token count quotient 5.07×.
 
 ## Model request measurements
 
-Ollama counts below are reported by the local API for the actual drafting prompt and full structured JSON response. They do not measure the complete source session or the capsule alone.
+Prompt and output counts below come from the Anthropic `usage` object of each drafting response (prompt = input plus any cached input tokens). The API reports no server duration, so that column is N/A. They do not measure the complete source session or the capsule alone.
 
 | Question | Model call wall time (s) | API prompt tokens | API output tokens | API duration (s) |
 |---|---:|---:|---:|---:|
-| Retries / idempotency | 1.567 | 1176 | 140 | 1.543 |
-| Timeout configuration | 1.166 | 1168 | 122 | 1.164 |
-| Fix location | 1.584 | 1167 | 165 | 1.582 |
+| Retries / idempotency | 8.035 | 1871 | 784 | N/A |
+| Timeout configuration | 4.084 | 1863 | 393 | N/A |
+| Fix location | 3.837 | 1857 | 317 | N/A |
 
 ## Retries / idempotency
 
@@ -49,7 +52,14 @@ approve
 Delivered capsule:
 
 ````text
-SDK 2.3 regenerates idempotencyKey on every retry attempt. To preserve one key, pass it outside the retry loop or upgrade to SDK 2.4.0 with `preserveIdempotencyKey: true`.
+In SDK 2.3.x, charge() sets `idempotencyKey = opts.idempotencyKey ?? randomUUID()`, so each call made by withRetry gets a new key. The server sees every retry as a new charge. The excerpts only cover timeout-triggered retries, not concurrent requests specifically.
+
+Fix: generate the key once, outside the retry loop, and reuse it:
+```ts
+const idempotencyKey = randomUUID();
+await withRetry(() => charge(params, { idempotencyKey }));
+```
+Or upgrade to 2.4.0 and use `withRetry(fn, { preserveIdempotencyKey: true })`. Changing timeoutMs does not fix the duplicates. Add a regression test that asserts exactly one recorded charge after a timeout and retry.
 ````
 
 ## Timeout configuration
@@ -58,7 +68,7 @@ How should I configure timeoutMs in createClient for the synthetic timeout and r
 
 Status: passed. Rules → minimize → human gate assertions: passed (human action simulated).
 
-SIMULATED decision: approve; 7 typed characters. Model flags: [].
+SIMULATED decision: approve; 7 typed characters. Model flags: ["/Users/bob/acme/sdk/packages/sdk/src/retry.ts","v2.5"].
 
 Exact simulated reply:
 
@@ -69,7 +79,7 @@ approve
 Delivered capsule:
 
 ````text
-Set timeoutMs to 500 in createClient for the synthetic test. The mock endpoint delays first response by 1500ms after recording charge, so retry timeouts only.
+In the synthetic reproduction, set the request timeout with createClient({ baseUrl, timeoutMs: 500 }). Have the mock endpoint record the charge, then delay its first response by 1500 ms. That exceeds the 500 ms timeout and forces a retry. Assert that exactly one charge is recorded after the timeout and retry. timeoutMs only controls when the retry happens. It does not fix the duplicate charges. The fix is to generate one idempotencyKey outside the retry loop, or to use withRetry(fn, { preserveIdempotencyKey: true }) on SDK 2.4.0.
 ````
 
 ## Fix location
@@ -78,7 +88,7 @@ Which source file contains the SDK retry fix, and what should its regression tes
 
 Status: passed. Rules → minimize → human gate assertions: passed (human action simulated).
 
-SIMULATED decision: approve; 7 typed characters. Model flags: ["The fix for duplicate charges due to idempotency key regeneration on retries is in the retry wrapper code"].
+SIMULATED decision: approve; 7 typed characters. Model flags: ["v2.5"].
 
 Exact simulated reply:
 
@@ -89,5 +99,5 @@ approve
 Delivered capsule:
 
 ````text
-packages/sdk/src/retry.ts
+The retry fix lives in packages/sdk/src/retry.ts. The regression test should simulate a timeout followed by a retry and assert that exactly one charge is recorded. The root cause is that charge() generates a new idempotency key on every call. Fix it by creating a single idempotency key outside withRetry, or by upgrading to SDK 2.4.0 and using withRetry(fn, { preserveIdempotencyKey: true }).
 ````

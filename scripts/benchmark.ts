@@ -220,7 +220,10 @@ export function renderBenchmark(report: BenchmarkReport): string {
         lines.push('', 'Source and capsule token counts are N/A. No character-based token estimates or compression claims are substituted.');
     if (report.sourceTokenCountError)
         lines.push('', `Source token count unavailable: ${cell(report.sourceTokenCountError)}`);
-    lines.push('', '## Model request measurements', '', 'Ollama counts below are reported by the local API for the actual drafting prompt and full structured JSON response. They do not measure the complete source session or the capsule alone.', '', '| Question | Model call wall time (s) | API prompt tokens | API output tokens | API duration (s) |', '|---|---:|---:|---:|---:|');
+    const usageNote = report.provider === 'anthropic'
+        ? 'Prompt and output counts below come from the Anthropic `usage` object of each drafting response (prompt = input plus any cached input tokens). The API reports no server duration, so that column is N/A. They do not measure the complete source session or the capsule alone.'
+        : 'Ollama counts below are reported by the local API for the actual drafting prompt and full structured JSON response. They do not measure the complete source session or the capsule alone.';
+    lines.push('', '## Model request measurements', '', usageNote, '','| Question | Model call wall time (s) | API prompt tokens | API output tokens | API duration (s) |', '|---|---:|---:|---:|---:|');
     for (const row of report.results)
         lines.push(`| ${cell(row.label)} | ${seconds(row.modelCallMs)} | ${cell(row.usage?.promptTokens)} | ${cell(row.usage?.outputTokens)} | ${seconds(row.usage?.durationMs ?? null)} |`);
     for (const row of report.results) {
@@ -243,7 +246,7 @@ async function main() {
     const counter = config.MODEL_PROVIDER === 'anthropic' ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY }) : null;
     const report = await runBenchmark({ config, drafter, providerLabel: config.MODEL_PROVIDER, modelLabel: config.MODEL_PROVIDER === 'anthropic' ? config.ANTHROPIC_MODEL : config.OLLAMA_MODEL,
         ...(counter ? { countTokens: async (text: string) => (await counter.messages.countTokens({ model: config.ANTHROPIC_MODEL, messages: [{ role: 'user', content: text }] })).input_tokens } : {}),
-        ...(drafter instanceof OllamaDrafter ? { getUsage: () => drafter.lastUsage } : {}) });
+        getUsage: () => drafter.lastUsage });
     const markdown = renderBenchmark(report);
     writeFileSync(new URL('../benchmark.md', import.meta.url), markdown);
     console.log(markdown);

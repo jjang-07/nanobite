@@ -111,7 +111,7 @@ ANTHROPIC_API_KEY= MODEL_PROVIDER=ollama npm run benchmark
 
 **Benchmark human actions are simulated.** The harness first proves that absent approval blocks delivery, then submits an explicit simulated approval or full replacement. Timing includes model work and immediate simulated review; it does not measure human response time. Model prompt/output counts, source/capsule counts, and character counts are kept separate.
 
-The saved 2026-10-17 run used real local `qwen3:4b` responses. All three workflow checks passed, with request-to-capsule observations of 1.572, 1.168, and 1.585 seconds. The fix-location answer was incomplete, so a workflow pass must not be presented as a quality certification. Claude API drafting and Claude source/capsule token counts remain unverified until a configured-key run succeeds. No token estimates substitute for missing measurements.
+The saved [benchmark.md](benchmark.md) is a 2026-10-17 run with real `claude-opus-5-5` drafting. All three workflow checks passed, with request-to-capsule observations of about 4 to 8 seconds. Source and capsule token counts come from Anthropic `countTokens`: the synthetic Bob session is 760 tokens and the capsules are 150 to 272 tokens. That 3 to 5 times reduction reflects a deliberately short fixture, not a real debugging session, so do not quote it as typical compression. An earlier local `qwen3:4b` run also passed all three checks; its fix-location answer was incomplete. A workflow pass is not a quality certification.
 
 ## Restart or reset
 
@@ -137,7 +137,7 @@ In a new agent turn, use requests such as `$impeccable polish src/dashboard/rend
 
 ## What remains unverified
 
-- Claude demo calls need a locally configured key and a successful live run. Key availability was stated, but no configured key location was provided during implementation.
+- Claude is verified on one laptop: key authentication, the three-question benchmark, and one live rehearsal through the real worker, dashboard, and MCP stdio server, ending red to green on the Acme test. The approval in that rehearsal was clicked by the operator through the dashboard form, not by a second person. Each other laptop needs its own ignored `.env`.
 - Primitive live delivery, account entitlements, authentic email replies, and real cursor behavior remain unverified and disabled. A credential-free synthetic endpoint check established schema compatibility only.
 - A second computer, Bob's physical phone, three human rehearsals, a backup video, organizer confirmation, and hackathon submission have not been completed by local software tests. No backup video or phone approval is claimed.
 

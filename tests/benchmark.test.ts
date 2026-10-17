@@ -42,3 +42,10 @@ test('benchmark records model failures without submitting simulated approvals or
     }
     assert.match(renderBenchmark(report), /3 failed/);
 });
+test('model measurement notes name the provider that produced the counts', () => {
+    const base = { generatedAt: '2026-10-17T00:00:00.000Z', model: 'm', sourceCharacters: 1, sourceTokens: null, sourceTokenCountError: null, results: [] };
+    const claude = renderBenchmark({ ...base, provider: 'anthropic' } as any);
+    assert.match(claude, /Anthropic `usage`/);
+    assert.doesNotMatch(claude, /Ollama counts/);
+    assert.match(renderBenchmark({ ...base, provider: 'ollama' } as any), /Ollama counts/);
+});

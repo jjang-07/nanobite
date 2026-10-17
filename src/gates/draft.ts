@@ -127,18 +127,32 @@ export class OllamaDrafter implements Drafter {
         return draft;
     }
 }
+/** The subset of the Anthropic client the drafter uses; injectable so tests never touch the network. */
+export interface AnthropicParseClient {
+    messages: {
+        parse(params: any): Promise<any>;
+    };
+}
 /** Optional cloud adapter; callers must explicitly select it before construction. */
 export class AnthropicDrafter implements Drafter {
-    private client: Anthropic;
+    private client: AnthropicParseClient;
     private model: string;
+    lastUsage: DraftUsage | null = null;
     constructor(options: {
         apiKey?: string;
         model?: string;
-    } = {}) { this.client = new Anthropic({ apiKey: options.apiKey }); this.model = options.model ?? 'claude-opus-5-5'; }
+        client?: AnthropicParseClient;
+    } = {}) { this.client = options.client ?? new Anthropic({ apiKey: options.apiKey }); this.model = options.model ?? 'claude-opus-5-5'; }
     async draft(input: DraftInput): Promise<Draft> {
+        this.lastUsage = null;
         const response = await this.client.messages.parse({ model: this.model, max_tokens: 4000, output_config: { effort: 'medium', format: zodOutputFormat(DraftSchema) }, system: DRAFT_SYSTEM, messages: [{ role: 'user', content: buildDraftPrompt(input) }] });
         if (response.stop_reason === 'refusal' || response.stop_reason === 'max_tokens' || !response.parsed_output)
             throw new Error('draft_failed');
-        return validateDraft(response.parsed_output, input);
+        const draft = validateDraft(response.parsed_output, input);
+        // input_tokens excludes cached prompt tokens; the full prompt is their sum. Absent counts stay null.
+        const usage = response.usage ?? {}, uncached = actualCount(usage.input_tokens);
+        const prompt = uncached === null ? null : uncached + (actualCount(usage.cache_creation_input_tokens) ?? 0) + (actualCount(usage.cache_read_input_tokens) ?? 0);
+        this.lastUsage = { model: typeof response.model === 'string' ? response.model : this.model, promptTokens: prompt, outputTokens: actualCount(usage.output_tokens), durationMs: null };
+        return draft;
     }
 }

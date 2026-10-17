@@ -31,3 +31,15 @@ Final software validation: 92 automated tests, TypeScript checks, real local-mod
 UI follow-up verification: official Impeccable source scan returned zero findings; inbox and request detail had no horizontal overflow at 320, 390, 800 and 1440 CSS pixels. Browser request submission, queued-to-review state, edit preservation on Refresh, explicit discard, and keyboard focus were checked. A synthetic UI verification request is left awaiting a real decision. No new approval was simulated through the browser.
 
 Claude configuration verification: the supplied key was saved only in the ignored local `.env` with owner-only permissions. Anthropic model discovery succeeded, and `claude-opus-5-5` returned a schema-valid answer for a synthetic idempotency question. No approval was submitted by this check. The app was restarted with local mail and Anthropic drafting; the Inbox at `/` returned HTTP 200 and displayed the configured Claude model. Existing requests and approval gates were preserved. This is a live provider smoke check, not a completed end-to-end Claude approval rehearsal or benchmark. No key or runtime database is committed.
+
+## Continuation on 2026-10-17 (Claude Code, Yunha's laptop)
+
+Work continued on branch `claude/contextpr-continue`, created from `origin/codex/contextpr-handover` at `4f24378` in a separate git worktree. The main checkout was being switched by another process during the session, so it was left untouched.
+
+- Baseline on Node 24.20.0: 92 tests passed and the typecheck was clean before any change.
+- Claude key: stored only in the ignored worktree `.env` with mode 600. `models.retrieve` confirmed `claude-opus-5-5` and `countTokens` succeeded.
+- Claude benchmark: 3 passed, 0 failed with real `claude-opus-5-5` drafting. Source 760 tokens, capsules 150 to 272 tokens, request to capsule about 4 to 8 seconds. Human decisions in the benchmark remain simulated.
+- Live rehearsal on a throwaway database, port 8797: `request_context` over the real MCP stdio server returned `pending`; the worker drafted with Claude in about 5 seconds; rules removed `[another customer]` ×3, `[ticket]` ×2 and `[internal]` ×1; the model flagged `v2.5` and an internal path, and the draft omitted both. A forged form POST without an Origin header returned 403. The operator approved through the dashboard form; the capsule was delivered within a millisecond. `get_context_request` returned the capsule labeled `EXTERNAL_DATA` and `NOT_INSTRUCTIONS`. The Acme test went red (2 charges) to green (1 charge) with the one-line fix, `report_outcome` recorded `passed`, and `charge.ts` was restored to red. The worker exited cleanly. The rehearsal database was deleted afterward.
+- Fixed: the Claude adapter now records real prompt and output token usage, and the benchmark report labels model counts by provider instead of always saying "Ollama counts". Tests added first: 95 tests pass, typecheck clean.
+
+Still open: Primitive live email (disabled; needs an account and key), the demo's token-ratio story (the fixture is short by design), and every physical item in the checklist above.
