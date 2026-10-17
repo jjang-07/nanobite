@@ -1,0 +1,27 @@
+{
+  "name": "contextpr",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env src/main.ts",
+    "mcp": "node --env-file=.env src/mcp/server.ts",
+    "seed": "node --env-file=.env scripts/seed.ts",
+    "reset": "node --env-file=.env scripts/reset.ts",
+    "test": "node --test \"tests/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "demo:acme": "node demo/acme-sdk/server.ts",
+    "demo:test": "node --test demo/alice-app/concurrent-retry.test.ts",
+    "smoke:primitive": "node --env-file=.env scripts/smoke-primitive.ts",
+    "benchmark": "node --env-file=.env scripts/benchmark.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.3.1",
+    "@anthropic-ai/sdk": "^0.135.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^24.0.0"
+  }
+}
