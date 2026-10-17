@@ -13,7 +13,7 @@ Work is isolated on `codex/contextpr-handover`; the original Desktop/P1 checkout
 - [x] 6 Reply parser — 23 tests, typecheck; `bd3ec8c`.
 - [x] 7 Approval walking skeleton + local persistent inbox — 32 tests and typecheck, full local transport with explicit simulated human reply. Sender verification guards real approval replies.
 - [x] 8 Transcript indexer and fixture — 34 tests, typecheck. Fixture is synthetic; thinking never enters indexed text.
-- [ ] 9 Rules gate.
+- [x] 9 Rules gate — 38 tests and typecheck. Single-word literal matches preserve email tokens until full masking.
 - [ ] 10 Local Ollama minimization gate and complete pipeline.
 - [ ] 11 Auto-merge rule, notification, revoke.
 - [ ] 12 MCP polish.

@@ -1,0 +1,11 @@
+INSERT INTO denylist (responder_identity,kind,pattern,placeholder) VALUES ('__RESPONDER__','literal','Northwind Traders','[another customer]');
+INSERT INTO denylist (responder_identity,kind,pattern,placeholder) VALUES ('__RESPONDER__','literal','Northwind','[another customer]');
+INSERT INTO denylist (responder_identity,kind,pattern,placeholder) VALUES ('__RESPONDER__','regex','\bACME-\d{3,6}\b','[ticket]');
+INSERT INTO denylist (responder_identity,kind,pattern,placeholder) VALUES ('__RESPONDER__','regex','\b(sk|pk)_(live|test)_[A-Za-z0-9]{8,}\b','[secret]');
+INSERT INTO denylist (responder_identity,kind,pattern,placeholder) VALUES ('__RESPONDER__','regex','\bprim_[A-Za-z0-9_]{8,}\b','[secret]');
+INSERT INTO denylist (responder_identity,kind,pattern,placeholder) VALUES ('__RESPONDER__','regex','(api[_-]?key|secret|token)\s*[:=]\s*\S+','[secret]');
+INSERT INTO denylist (responder_identity,kind,pattern,placeholder) VALUES ('__RESPONDER__','regex','[\w.+-]+@[\w-]+\.[\w.-]+','[email]');
+INSERT INTO denylist (responder_identity,kind,pattern,placeholder) VALUES ('__RESPONDER__','sentence','pricing','[internal]');
+INSERT INTO denylist (responder_identity,kind,pattern,placeholder) VALUES ('__RESPONDER__','sentence','roadmap','[internal]');
+INSERT INTO denylist (responder_identity,kind,pattern,placeholder) VALUES ('__RESPONDER__','sentence','CTO','[internal]');
+INSERT INTO denylist (responder_identity,kind,pattern,placeholder) VALUES ('__RESPONDER__','sentence','charges a day','[internal]');
