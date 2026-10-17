@@ -1,0 +1,7 @@
+import type {DatabaseSync} from 'node:sqlite';import type {Config} from '../config.ts';import type {PrimitiveClient} from '../primitive/client.ts';import type {Drafter} from '../types.ts';
+import {sendQueuedRequests,pollDeliveries} from './requester.ts';import {pollInbound,processReceived,pollApprovals} from './responder.ts';
+import {setTimeout} from 'node:timers/promises';import {nowIso} from '../ids.ts';
+export interface Deps {clientFor:(identity:string)=>PrimitiveClient;config:Config;drafter?:Drafter;now?:()=>string;}
+export async function initializeCursor(db:DatabaseSync,deps:Deps){const identity=deps.config.RESPONDER_IDENTITY;if(db.prepare('SELECT since FROM cursors WHERE identity=?').get(identity)?.since)return;const baseline=await deps.clientFor(identity).listInbound(identity,null,0);db.prepare('INSERT OR REPLACE INTO cursors(identity,since) VALUES(?,?)').run(identity,baseline.nextSince??`${nowIso()}|00000000-0000-0000-0000-000000000000`);}
+export async function runCycle(db:DatabaseSync,deps:Deps){for(const step of [sendQueuedRequests,pollInbound,processReceived,pollApprovals,pollDeliveries]){try{await step(db,deps);}catch(e){console.error(`${step.name}: ${e instanceof Error?e.message:'worker error'}`);}}}
+export async function runWorker(deps:Deps&{db:DatabaseSync;signal?:AbortSignal}){await initializeCursor(deps.db,deps);while(!deps.signal?.aborted){await runCycle(deps.db,deps);try{await setTimeout(1000,undefined,{signal:deps.signal});}catch{break;}}}
