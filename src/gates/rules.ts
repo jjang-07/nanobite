@@ -10,7 +10,7 @@ export function applyRules(text:string,rules:readonly Rule[]):{text:string;remov
   text=text.replace(new RegExp(pattern,'gi'),()=>hit(r.placeholder));
  }
  for(const r of rules.filter(r=>r.kind==='regex'))text=text.replace(new RegExp(r.pattern,'gi'),()=>hit(r.placeholder));
- for(const r of rules.filter(r=>r.kind==='sentence'))text=text.split(/(?<=[.!?])(?=\s)|\n/).map(sentence=>{if(!sentence.toLowerCase().includes(r.pattern.toLowerCase()))return sentence;const leading=sentence.match(/^\s*/)?.[0]??'';return `${leading}[sentence removed: ${hit(r.placeholder)}]`;}).join('');
+ for(const r of rules.filter(r=>r.kind==='sentence'))text=text.split(/((?<=[.!?])\s+|\n)/).map(sentence=>{if(!sentence.toLowerCase().includes(r.pattern.toLowerCase()))return sentence;const leading=sentence.match(/^\s*/)?.[0]??'';return `${leading}[sentence removed: ${hit(r.placeholder)}]`;}).join('');
  return {text,removals:[...counts].map(([placeholder,count])=>({placeholder,count}))};
 }
 export function loadRules(db:DatabaseSync,responderIdentity:string):Rule[]{return db.prepare('SELECT kind,pattern,placeholder FROM denylist WHERE responder_identity=? ORDER BY id').all(responderIdentity) as unknown as Rule[];}

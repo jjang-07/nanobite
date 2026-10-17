@@ -23,3 +23,7 @@ test('the fix line survives intact', () => {
   assert.match(r.text, /withRetry\(fn, \{ preserveIdempotencyKey: true \}\)/);
 });
 test('emails are masked', () => { assert.equal(applyRules('mail cto@northwind.example now', [...rules]).text, 'mail [email] now'); });
+test('sentence filtering preserves line breaks in code and unrelated lines', () => {
+ const input='const key = randomUUID();\nwithRetry(() => charge({idempotencyKey:key}));\nKeep this line.';
+ assert.equal(applyRules(input,[...rules]).text,input);
+});

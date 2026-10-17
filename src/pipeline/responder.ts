@@ -29,8 +29,20 @@ export async function sendApproval(db:DatabaseSync,deps:Deps,p:PrRow){
  recordSent(db,r.sentEmailId,p.id,'approval',p.responder_identity);updatePr(db,p.id,{state:'awaiting_approval',approval_sent_email_id:r.sentEmailId,approver:deps.config.APPROVER_EMAIL});addEvent(db,p.id,'approval_sent',{sent_email_id:r.sentEmailId});
 }
 export async function processReceived(db:DatabaseSync,deps:Deps){for(const p of listPrs(db,{state:'received'})){try{
- updatePr(db,p.id,{state:'drafting',draft_answer:'HARDCODED DRAFT: replace in Task 10',removals:'[]'});await sendApproval(db,deps,getPr(db,p.id)!);
- }catch(e){recordError(db,p.id,e);}}}
+ updatePr(db,p.id,{state:'drafting'});
+ const excerpts=searchSources(db,p.responder_identity,p.topic.replace(/[-/]/g,' ')+' '+p.question+' '+(p.context_hint??''));
+ if(!excerpts.length){await finalize(db,deps,p,'deny',undefined,'no_sources','system');continue;}
+ const rules=loadRules(db,p.responder_identity);let removals:Removal[]=[];
+ const clean=excerpts.map(e=>{const r=applyRules(e.text,rules);removals=mergeRemovals(removals,r.removals);return {...e,text:r.text};});
+ addEvent(db,p.id,'sources_matched',{ids:excerpts.map(e=>e.id)});
+ if(!deps.drafter)throw new Error('No model provider configured. Configure Claude or local Ollama and create a new request.');
+ const draft=await deps.drafter.draft({question:p.question,context:p.context_hint??undefined,excerpts:clean});
+ const answer=applyRules(draft.answer,rules);removals=mergeRemovals(removals,answer.removals);
+ const flagged=draft.flagged.map(f=>applyRules(f,rules).text);
+ updatePr(db,p.id,{draft_answer:answer.text,draft_flagged:JSON.stringify(flagged),removals:JSON.stringify(removals),matched_source_ids:JSON.stringify(excerpts.map(e=>e.id))});
+ addEvent(db,p.id,'rules_applied',{removals});addEvent(db,p.id,'drafted',{confidence:draft.confidence,why_relevant:applyRules(draft.why_relevant,rules).text,used_excerpt_ids:draft.used_excerpt_ids});
+ await sendApproval(db,deps,getPr(db,p.id)!);
+ }catch(e){recordError(db,p.id,e);updatePr(db,p.id,{state:'failed',decision_reason:e instanceof Error?e.message:'draft_failed'});}}}
 export async function sendFinalized(db:DatabaseSync,deps:Deps,p:PrRow){
  if(!p.request_inbound_email_id||p.capsule_sent_email_id)return;
  const denied=p.state==='denied';const decision=p.decision==='auto'?'auto_merged':p.decision==='edit'?'edited':'approved';
@@ -54,3 +66,6 @@ export async function pollApprovals(db:DatabaseSync,deps:Deps){await Promise.all
   recordSent(db,sent.sentEmailId,p.id,'clarification',p.responder_identity);db.prepare('UPDATE sent_emails SET handled=1 WHERE sent_email_id=?').run(id);updatePr(db,p.id,{approval_sent_email_id:sent.sentEmailId});
  }
  }catch(e){recordError(db,p.id,e);}}));}
+
+import {searchSources} from '../indexer/index.ts';
+import {applyRules,loadRules,mergeRemovals} from '../gates/rules.ts';
