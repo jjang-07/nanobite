@@ -17,7 +17,7 @@ Work is isolated on `codex/contextpr-handover`; the original Desktop/P1 checkout
 - [x] 10 Replaceable Claude/Ollama minimization and complete pipeline — 47 tests, typecheck. No-source denial verified. Real Claude check awaits the key location.
 - [x] 11 Scoped auto-merge rule, full notification, revoke — 48 tests and typecheck.
 - [x] 12 MCP polish — 50 tests and typecheck. Reporting before delivery is rejected; repeated identical reports are idempotent. The original test that reported a queued request was corrected to match the lifecycle.
-- [ ] 13 Local Inbox/dashboard with human approval controls.
+- [x] 13 Local Inbox/dashboard — 55 tests, typecheck, browser rendering checked. Same-origin and CSRF protection; submissions enter the durable local inbox.
 - [ ] 14 Acme demo and vendor configuration.
 - [ ] 15 Three-question local benchmark with honest provenance.
 - [ ] 16 Restart hardening and runbook.
