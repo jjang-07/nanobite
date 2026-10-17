@@ -1,10 +1,16 @@
-import {loadConfig} from '../src/config.ts';
-import {clientForIdentity} from '../src/primitive/registry.ts';
-import {newPrId} from '../src/ids.ts';
-const c=loadConfig(),client=clientForIdentity(c.RESPONDER_IDENTITY,c);
-const r=await client.sendMail({from:c.RESPONDER_IDENTITY,to:c.APPROVER_EMAIL,subject:'ContextPR delivery check',bodyText:'ContextPR email delivery test. No approval or reply is needed.',idempotencyKey:`${newPrId()}:smoke:1`,wait:true});
-console.log({status:r.status,delivery_status:r.deliveryStatus});
-const baseline=await client.listInbound(c.RESPONDER_IDENTITY,null,0);
-console.log({newest_id:baseline.items[0]?.id??null,nextSince:baseline.nextSince});
-if(baseline.nextSince)console.log({count:(await client.listInbound(c.RESPONDER_IDENTITY,baseline.nextSince,5)).items.length});
-else console.log('Inbox empty; no server cursor to probe. Re-run after receiving a test email.');
+import { loadConfig } from '../src/config.ts';
+import { clientForIdentity } from '../src/primitive/registry.ts';
+import { newPrId } from '../src/ids.ts';
+if (process.env.MAIL_PROVIDER !== 'primitive') {
+    console.log('Primitive is disabled. Local inbox mode makes no email-service calls.');
+    process.exit(0);
+}
+const c = loadConfig(), client = clientForIdentity(c.RESPONDER_IDENTITY, c);
+const r = await client.sendMail({ from: c.RESPONDER_IDENTITY, to: c.APPROVER_EMAIL, subject: 'ContextPR delivery check', bodyText: 'ContextPR email delivery test. No approval or reply is needed.', idempotencyKey: `${newPrId()}:smoke:1`, wait: true });
+console.log({ status: r.status, delivery_status: r.deliveryStatus });
+const baseline = await client.listInbound(c.RESPONDER_IDENTITY, null, 0);
+console.log({ newest_id: baseline.items[0]?.id ?? null, nextSince: baseline.nextSince });
+if (baseline.nextSince)
+    console.log({ count: (await client.listInbound(c.RESPONDER_IDENTITY, baseline.nextSince, 5)).items.length });
+else
+    console.log('Inbox empty; no server cursor to probe. Re-run after receiving a test email.');

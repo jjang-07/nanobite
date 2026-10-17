@@ -1,2 +1,10 @@
-import {loadConfig} from '../src/config.ts';import {openDb,migrate} from '../src/db/db.ts';import {seedRules,loadRules} from '../src/gates/rules.ts';import {loadTranscriptFile} from '../src/indexer/index.ts';
-const c=loadConfig(),db=openDb(c.CONTEXTPR_DB);migrate(db);seedRules(db,new URL('../demo/fixtures/rules.sql',import.meta.url).pathname,c.RESPONDER_IDENTITY);const result=loadTranscriptFile(db,c.RESPONDER_IDENTITY,new URL('../demo/fixtures/bob-session.jsonl',import.meta.url).pathname);console.log({fixture:'synthetic Bob demo transcript',...result,rules:loadRules(db,c.RESPONDER_IDENTITY).length});db.close();
+import { loadConfig } from '../src/config.ts';
+import { openDb, migrate } from '../src/db/db.ts';
+import { seedRules, loadRules } from '../src/gates/rules.ts';
+import { loadTranscriptFile } from '../src/indexer/index.ts';
+const c = loadConfig(), db = openDb(c.CONTEXTPR_DB);
+migrate(db);
+seedRules(db, new URL('../demo/fixtures/rules.sql', import.meta.url).pathname, c.RESPONDER_IDENTITY);
+const result = loadTranscriptFile(db, c.RESPONDER_IDENTITY, new URL('../demo/fixtures/bob-session.jsonl', import.meta.url).pathname);
+console.log({ fixture: 'synthetic Bob demo transcript', ...result, rules: loadRules(db, c.RESPONDER_IDENTITY).length });
+db.close();

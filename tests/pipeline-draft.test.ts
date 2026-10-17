@@ -1,9 +1,29 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';
-import {setup,queued,incoming,config} from './helpers.ts';import {getPr} from '../src/db/db.ts';import {loadTranscriptFile} from '../src/indexer/index.ts';import {seedRules} from '../src/gates/rules.ts';import {FakeDrafter} from '../src/gates/draft.ts';import {pollInbound,processReceived} from '../src/pipeline/responder.ts';import {parseEnvelope} from '../src/envelope.ts';
-test('search → rules → local drafting → rules stores a safe draft for explicit review',async()=>{
- const s=setup();const id=queued(s.db);s.mail.deliverInbound(incoming(id));await pollInbound(s.db,s.deps);
- loadTranscriptFile(s.db,config.RESPONDER_IDENTITY,new URL('../demo/fixtures/bob-session.jsonl',import.meta.url).pathname);seedRules(s.db,new URL('../demo/fixtures/rules.sql',import.meta.url).pathname,config.RESPONDER_IDENTITY);
- let saw=false;const drafter={async draft(input:any){saw=true;assert.ok(input.excerpts.length);const source=JSON.stringify(input.excerpts);assert.doesNotMatch(source,/Northwind|ACME-4821|NEVER_LEAK_THIS_THINKING_TEXT/);return new FakeDrafter({answer:'Northwind Traders fixed ACME-4821: use withRetry(fn, { preserveIdempotencyKey: true }).',why_relevant:'Same SDK retry bug.',confidence:'high',used_excerpt_ids:input.excerpts.map((e:any)=>e.id),flagged:['v2.5','unreleased']}).draft(input);}};
- await processReceived(s.db,{...s.deps,drafter});const p=getPr(s.db,id)!;assert.ok(saw);assert.equal(p.state,'awaiting_approval');assert.match(p.draft_answer!,/preserveIdempotencyKey/);assert.ok(JSON.parse(p.removals!).length);assert.ok(JSON.parse(p.matched_source_ids!).length);assert.match(s.mail.sent.at(-1)!.bodyText,/v2.5/);assert.doesNotMatch(s.mail.sent.at(-1)!.bodyText,/Northwind|ACME-4821|NEVER_LEAK_THIS_THINKING_TEXT/);
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { setup, queued, incoming, config } from './helpers.ts';
+import { getPr } from '../src/db/db.ts';
+import { loadTranscriptFile } from '../src/indexer/index.ts';
+import { seedRules } from '../src/gates/rules.ts';
+import { FakeDrafter } from '../src/gates/draft.ts';
+import { pollInbound, processReceived } from '../src/pipeline/responder.ts';
+import { parseEnvelope } from '../src/envelope.ts';
+test('search → rules → local drafting → rules stores a safe draft for explicit review', async () => {
+    const s = setup();
+    const id = queued(s.db);
+    s.mail.deliverInbound(incoming(id));
+    await pollInbound(s.db, s.deps);
+    loadTranscriptFile(s.db, config.RESPONDER_IDENTITY, new URL('../demo/fixtures/bob-session.jsonl', import.meta.url).pathname);
+    seedRules(s.db, new URL('../demo/fixtures/rules.sql', import.meta.url).pathname, config.RESPONDER_IDENTITY);
+    let saw = false;
+    const drafter = { async draft(input: any) { saw = true; assert.ok(input.excerpts.length); const source = JSON.stringify(input.excerpts); assert.doesNotMatch(source, /Northwind|ACME-4821|NEVER_LEAK_THIS_THINKING_TEXT/); return new FakeDrafter({ answer: 'Northwind Traders fixed ACME-4821: use withRetry(fn, { preserveIdempotencyKey: true }).', why_relevant: 'Same SDK retry bug.', confidence: 'high', used_excerpt_ids: input.excerpts.map((e: any) => e.id), flagged: ['v2.5', 'unreleased'] }).draft(input); } };
+    await processReceived(s.db, { ...s.deps, drafter });
+    const p = getPr(s.db, id)!;
+    assert.ok(saw);
+    assert.equal(p.state, 'awaiting_approval');
+    assert.match(p.draft_answer!, /preserveIdempotencyKey/);
+    assert.ok(JSON.parse(p.removals!).length);
+    assert.ok(JSON.parse(p.matched_source_ids!).length);
+    assert.match(s.mail.sent.at(-1)!.bodyText, /v2.5/);
+    assert.doesNotMatch(s.mail.sent.at(-1)!.bodyText, /Northwind|ACME-4821|NEVER_LEAK_THIS_THINKING_TEXT/);
 });
-test('no sources is a denial with a suggestion, never an approval',async()=>{const s=setup();s.db.exec('DELETE FROM sources');const id=queued(s.db);s.mail.deliverInbound(incoming(id));await pollInbound(s.db,s.deps);await processReceived(s.db,{...s.deps,drafter:new FakeDrafter()});assert.equal(getPr(s.db,id)?.decision_reason,'no_sources');assert.equal(getPr(s.db,id)?.state,'denied');const e=parseEnvelope(s.mail.sent.at(-1)!.bodyText);assert.equal(e?.kind,'denial');assert.ok(e?.payload.suggestion);assert.equal(s.db.prepare("SELECT count(*) n FROM sent_emails WHERE purpose='approval'").get()?.n,0);});
+test('no sources is a denial with a suggestion, never an approval', async () => { const s = setup(); s.db.exec('DELETE FROM sources'); const id = queued(s.db); s.mail.deliverInbound(incoming(id)); await pollInbound(s.db, s.deps); await processReceived(s.db, { ...s.deps, drafter: new FakeDrafter() }); assert.equal(getPr(s.db, id)?.decision_reason, 'no_sources'); assert.equal(getPr(s.db, id)?.state, 'denied'); const e = parseEnvelope(s.mail.sent.at(-1)!.bodyText); assert.equal(e?.kind, 'denial'); assert.ok(e?.payload.suggestion); assert.equal(s.db.prepare("SELECT count(*) n FROM sent_emails WHERE purpose='approval'").get()?.n, 0); });

@@ -1,5 +1,53 @@
-export interface SendInput { from: string; to: string; subject: string; bodyText: string; idempotencyKey: string; inReplyTo?: string; references?: string[]; wait?: boolean; }
-export interface SendResult { sentEmailId: string; status: string; deliveryStatus?: string; }
-export interface ReplyEmail { id: string; threadId: string | null; replyToSentEmailId: string | null; fromEmail: string; toEmail: string; subject: string | null; bodyText: string | null; receivedAt: string | null; fyi: boolean; senderVerified: boolean; }
-export interface InboundSummary { id: string; threadId: string | null; sender: string; recipient: string; subject: string | null; receivedAt: string; snippet: string | null; fyi: boolean; automated: boolean; }
-export interface InboundDetail extends InboundSummary { bodyText: string | null; bodyHtml: string | null; fromEmail: string; toEmail: string; replyToSentEmailId: string | null; inReplyTo: string[]; references: string[]; attachments: { filename: string | null; contentType: string | null; sizeBytes: number; partIndex: number }[]; }
+export interface SendInput {
+    from: string;
+    to: string;
+    subject: string;
+    bodyText: string;
+    idempotencyKey: string;
+    inReplyTo?: string;
+    references?: string[];
+    wait?: boolean;
+}
+export interface SendResult {
+    sentEmailId: string;
+    status: string;
+    deliveryStatus?: string;
+}
+export interface ReplyEmail {
+    id: string;
+    threadId: string | null;
+    replyToSentEmailId: string | null;
+    fromEmail: string;
+    toEmail: string;
+    subject: string | null;
+    bodyText: string | null;
+    receivedAt: string | null;
+    fyi: boolean;
+    senderVerified: boolean;
+}
+export interface InboundSummary {
+    id: string;
+    threadId: string | null;
+    sender: string;
+    recipient: string;
+    subject: string | null;
+    receivedAt: string;
+    snippet: string | null;
+    fyi: boolean;
+    automated: boolean;
+}
+export interface InboundDetail extends InboundSummary {
+    bodyText: string | null;
+    bodyHtml: string | null;
+    fromEmail: string;
+    toEmail: string;
+    replyToSentEmailId: string | null;
+    inReplyTo: string[];
+    references: string[];
+    attachments: {
+        filename: string | null;
+        contentType: string | null;
+        sizeBytes: number;
+        partIndex: number;
+    }[];
+}
