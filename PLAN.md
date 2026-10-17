@@ -18,8 +18,10 @@ Work is isolated on `codex/contextpr-handover`; the original Desktop/P1 checkout
 - [x] 11 Scoped auto-merge rule, full notification, revoke — 48 tests and typecheck.
 - [x] 12 MCP polish — 50 tests and typecheck. Reporting before delivery is rejected; repeated identical reports are idempotent. The original test that reported a queued request was corrected to match the lifecycle.
 - [x] 13 Local Inbox/dashboard — 55 tests, typecheck, browser rendering checked. Same-origin and CSRF protection; submissions enter the durable local inbox.
-- [ ] 14 Acme demo and vendor configuration.
+- [x] 14 Acme demo — red (2 charges), one-line fix green (1 charge), restored red in git; typecheck passed. ContextPR registered with installed Codex using absolute paths. Separate laptop/Claude Code and phone flow remain unverified.
 - [ ] 15 Three-question local benchmark with honest provenance.
 - [ ] 16 Restart hardening and runbook.
 
 External/physical checklist: organizer confirmation, hackathon submission, other team devices, Bob's phone, backup video and three human rehearsals cannot be confirmed from local tests. Primitive remains disabled. Claude demo use is authorized but not yet verified. No invented token metrics, video, human approvals or model results.
+
+2026-10-17: User requested Impeccable and UI polish across the platform. Official project-local skill installed; refinements preserve the three gates and provider choices.
