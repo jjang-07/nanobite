@@ -1,6 +1,6 @@
 import type {DatabaseSync} from 'node:sqlite';
-import {getPr,insertPr,updatePr,addEvent,transaction} from '../db/db.ts';
-import {parseEnvelope} from '../envelope.ts';import {nowIso} from '../ids.ts';
+import {getPr,insertPr,updatePr,addEvent,transaction,listPrs} from '../db/db.ts';
+import {encodeEnvelope,parseEnvelope} from '../envelope.ts';import {nowIso} from '../ids.ts';
 import type {InboundDetail} from '../primitive/client.ts';import type {Deps} from './worker.ts';
 export function handleInboundRequest(db:DatabaseSync,deps:Deps,detail:InboundDetail){
  const env=parseEnvelope(detail.bodyText);if(env?.kind!=='request')return;
@@ -20,5 +20,37 @@ export async function pollInbound(db:DatabaseSync,deps:Deps){
  }
  db.prepare('INSERT INTO cursors(identity,since) VALUES(?,?) ON CONFLICT(identity) DO UPDATE SET since=excluded.since').run(identity,r.nextSince);
 }
-export async function processReceived(_db:DatabaseSync,_deps:Deps){}
-export async function pollApprovals(_db:DatabaseSync,_deps:Deps){}
+
+import type {PrRow} from '../db/db.ts';import type {ReplyEmail} from '../primitive/client.ts';import type {Decision,Removal} from '../types.ts';
+import {recordSent,recordError} from './requester.ts';import {parseDecision,buildApprovalEmail,buildClarificationEmail} from '../gates/approval.ts';
+export function trustedReply(r:ReplyEmail,sentId:string,from:string,to:string){return r.senderVerified&&!r.fyi&&r.fromEmail.toLowerCase()===from.toLowerCase()&&r.toEmail.toLowerCase()===to.toLowerCase()&&r.replyToSentEmailId===sentId;}
+export async function sendApproval(db:DatabaseSync,deps:Deps,p:PrRow){
+ const r=await deps.clientFor(p.responder_identity).sendMail({from:p.responder_identity,to:deps.config.APPROVER_EMAIL,...buildApprovalEmail(p,deps.config),idempotencyKey:`${p.id}:approval:1`});
+ recordSent(db,r.sentEmailId,p.id,'approval',p.responder_identity);updatePr(db,p.id,{state:'awaiting_approval',approval_sent_email_id:r.sentEmailId,approver:deps.config.APPROVER_EMAIL});addEvent(db,p.id,'approval_sent',{sent_email_id:r.sentEmailId});
+}
+export async function processReceived(db:DatabaseSync,deps:Deps){for(const p of listPrs(db,{state:'received'})){try{
+ updatePr(db,p.id,{state:'drafting',draft_answer:'HARDCODED DRAFT: replace in Task 10',removals:'[]'});await sendApproval(db,deps,getPr(db,p.id)!);
+ }catch(e){recordError(db,p.id,e);}}}
+export async function sendFinalized(db:DatabaseSync,deps:Deps,p:PrRow){
+ if(!p.request_inbound_email_id||p.capsule_sent_email_id)return;
+ const denied=p.state==='denied';const decision=p.decision==='auto'?'auto_merged':p.decision==='edit'?'edited':'approved';
+ const envelope=denied?encodeEnvelope('denial',{v:1,id:p.id,reason:p.decision_reason??'Declined by approver',suggestion:'Narrow the question, include the failing test and SDK version, or ask a different responder.'}):encodeEnvelope('capsule',{v:1,id:p.id,text:p.approved_text,decision,approved_at:p.decided_at,gates:{rules_removals:(JSON.parse(p.removals??'[]') as Removal[]).reduce((n,r)=>n+r.count,0),minimized:true,human:decision}});
+ const purpose=denied?'denial':'capsule';const r=await deps.clientFor(p.responder_identity).replyToEmail(p.request_inbound_email_id,{bodyText:`Context PR ${p.id}: ${denied?'denied':'approved answer'}\n\n${envelope}`,idempotencyKey:`${p.id}:${purpose}:1`});
+ recordSent(db,r.sentEmailId,p.id,purpose,p.responder_identity,1);updatePr(db,p.id,{capsule_sent_email_id:r.sentEmailId});addEvent(db,p.id,denied?'denied':'capsule_sent',{sent_email_id:r.sentEmailId});
+}
+export async function finalize(db:DatabaseSync,deps:Deps,p:PrRow,decision:Decision,text?:string,reason?:string,approver=deps.config.APPROVER_EMAIL){
+ const denied=decision==='deny';
+ updatePr(db,p.id,{state:denied?'denied':'approved',decision,decision_reason:reason??null,approved_text:denied?null:decision==='edit'?text!:p.draft_answer,approver,decided_at:nowIso()});addEvent(db,p.id,'decision',{decision,approver});
+ if(p.approval_sent_email_id)db.prepare('UPDATE sent_emails SET handled=1 WHERE sent_email_id=?').run(p.approval_sent_email_id);
+ await sendFinalized(db,deps,getPr(db,p.id)!);
+}
+export async function pollApprovals(db:DatabaseSync,deps:Deps){await Promise.all(listPrs(db,{state:'awaiting_approval'}).map(async p=>{try{
+ const id=p.approval_sent_email_id;if(!id)return;const r=await deps.clientFor(p.responder_identity).awaitReply(id,3000);if(!r||!trustedReply(r,id,p.approver??deps.config.APPROVER_EMAIL,p.responder_identity))return;
+ const parsed=parseDecision(r.bodyText);
+ if(['approve','approve_always','deny','edit'].includes(parsed.decision)){await finalize(db,deps,p,parsed.decision,parsed.text,parsed.reason,r.fromEmail);}
+ else {
+  const attempt=Number(db.prepare("SELECT count(*) n FROM sent_emails WHERE pr_id=? AND purpose='clarification'").get(p.id)?.n??0)+1;
+  const sent=await deps.clientFor(p.responder_identity).sendMail({from:p.responder_identity,to:p.approver??deps.config.APPROVER_EMAIL,...buildClarificationEmail(p),idempotencyKey:`${p.id}:clarification:${attempt}`});
+  recordSent(db,sent.sentEmailId,p.id,'clarification',p.responder_identity);db.prepare('UPDATE sent_emails SET handled=1 WHERE sent_email_id=?').run(id);updatePr(db,p.id,{approval_sent_email_id:sent.sentEmailId});
+ }
+ }catch(e){recordError(db,p.id,e);}}));}

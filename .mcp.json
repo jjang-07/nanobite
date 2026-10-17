@@ -1,1 +1,1 @@
-{"mcpServers":{"contextpr":{"type":"stdio","command":"node","args":["--env-file=.env","src/mcp/server.ts"]}}}
+{"mcpServers":{"contextpr":{"type":"stdio","command":"node","args":["--env-file-if-exists=.env","src/mcp/server.ts"]}}}

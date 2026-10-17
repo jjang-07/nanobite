@@ -16,3 +16,13 @@ export function parseDecision(body:string|null):{decision:Decision;text?:string;
  if(/^revoke\b/.test(line))return {decision:'revoke'};
  return {decision:'unrecognized'};
 }
+
+import type {PrRow} from '../db/db.ts';
+import type {Config} from '../config.ts';
+import type {Removal} from '../types.ts';
+export function buildApprovalEmail(p:PrRow,config:Config):{subject:string;bodyText:string}{
+ const removals=(JSON.parse(p.removals??'[]') as Removal[]).map(r=>`${r.placeholder} ×${r.count}`).join(', ')||'none';
+ const ids=JSON.parse(p.matched_source_ids??'[]') as string[];
+ return {subject:`[ContextPR ${p.id}] Approve answer to ${p.requester_identity}? (${p.topic})`,bodyText:`A coding agent at ${p.requester_identity} (for ${p.on_behalf_of??'an engineer'}) asked your agent:\n\n  "${p.question}"\n\nDRAFT ANSWER — sent word for word if you approve:\n----------------------------------------\n${p.draft_answer}\n----------------------------------------\nAlready removed by rules: ${removals}\nModel flagged for your judgment: ${(JSON.parse(p.draft_flagged??'[]') as string[]).map(s=>JSON.stringify(s)).join(', ')||'none'}\nSources: ${new Set(ids.map(id=>id.split(':')[0])).size} session, ${ids.length} excerpts. Nothing else is sent.\n\nReply with ONE of:\n  approve\n  approve always      auto-send future answers on this topic to this requester; you get a copy each time\n  deny <reason>\n  edit                then paste the full replacement text below it\n\nContext PR: ${config.DASHBOARD_PUBLIC_URL}/pr/${p.id}`};
+}
+export function buildClarificationEmail(p:PrRow){return {subject:`[ContextPR ${p.id}] Clarify your decision`,bodyText:'I could not read that reply. Reply with exactly one of: approve, approve always, deny <reason>, edit. For edit, paste the full replacement text below the first line.'};}

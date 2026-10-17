@@ -1,6 +1,6 @@
 [mcp_servers.contextpr]
 command = "node"
-args = ["--env-file=/ABS/PATH/nanobite/.env", "/ABS/PATH/nanobite/src/mcp/server.ts"]
+args = ["--env-file-if-exists=/ABS/PATH/nanobite/.env", "/ABS/PATH/nanobite/src/mcp/server.ts"]
 cwd = "/ABS/PATH/nanobite"
 startup_timeout_sec = 20
 tool_timeout_sec = 60
