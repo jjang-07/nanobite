@@ -30,3 +30,11 @@ test('migrate adds the summary column to a database created before it existed', 
     const cols = db.prepare('PRAGMA table_info(context_prs)').all().map((c: any) => c.name);
     assert.ok(cols.includes('draft_summary'));
 });
+import { renderPr } from '../src/dashboard/render.ts';
+test('the request page shows the plain summary above the exact draft, labeled as not sent', () => {
+    const s = setup(); const id = queued(s.db);
+    s.db.prepare("UPDATE context_prs SET state='awaiting_approval', draft_answer='EXACT', draft_summary='PLAIN WORDS' WHERE id=?").run(id);
+    const html = renderPr(getPr(s.db, id)!, [], { config: s.deps.config });
+    assert.ok(html.indexOf('PLAIN WORDS') > 0 && html.indexOf('PLAIN WORDS') < html.indexOf('EXACT'));
+    assert.match(html, /not sent/);
+});

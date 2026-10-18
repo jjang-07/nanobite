@@ -40,6 +40,8 @@ export interface InboundSummary {
 }
 export interface InboundDetail extends InboundSummary {
     bodyText: string | null;
+    /** True when the sender passed DMARC alignment at ingest. Unset for local mail. */
+    dmarcPass?: boolean;
     bodyHtml: string | null;
     fromEmail: string;
     toEmail: string;

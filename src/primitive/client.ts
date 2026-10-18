@@ -80,7 +80,7 @@ export function createPrimitiveClient(apiKey: string, fetchImpl: typeof fetch = 
         },
         async getEmail(id) {
             const d = (await request('GET', `/emails/${encodeURIComponent(id)}`)).data;
-            return { ...summary(d), bodyText: d.body_text ?? d.parsed?.body_text ?? null, bodyHtml: d.body_html ?? d.parsed?.body_html ?? null, fromEmail: bareAddress(d.from_email), toEmail: bareAddress(d.to_email), replyToSentEmailId: d.reply_to_sent_email_id ?? null, inReplyTo: d.parsed?.in_reply_to ?? [], references: d.parsed?.references ?? [], attachments: (d.parsed?.attachments ?? []).map((a: any) => ({ filename: a.filename ?? null, contentType: a.content_type ?? null, sizeBytes: a.size_bytes, partIndex: a.part_index })) };
+            return { ...summary(d), dmarcPass: d.auth?.dmarc === 'pass', bodyText: d.body_text ?? d.parsed?.body_text ?? null, bodyHtml: d.body_html ?? d.parsed?.body_html ?? null, fromEmail: bareAddress(d.from_email), toEmail: bareAddress(d.to_email), replyToSentEmailId: d.reply_to_sent_email_id ?? null, inReplyTo: d.parsed?.in_reply_to ?? [], references: d.parsed?.references ?? [], attachments: (d.parsed?.attachments ?? []).map((a: any) => ({ filename: a.filename ?? null, contentType: a.content_type ?? null, sizeBytes: a.size_bytes, partIndex: a.part_index })) };
         }
     };
 }

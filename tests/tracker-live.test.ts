@@ -43,11 +43,16 @@ test('detail page and Inbox carry the tracker and update in place, never by relo
     const html = renderPr(p.row, p.events, { config });
     assert.match(html, /class="track"/);
     assert.match(html, /Gate 1/); assert.match(html, /Gate 3/);
+    // The three gates form their own highlighted zone, distinct from Request and Delivery.
+    assert.match(html, /<div class="zone request">[\s\S]*Asked[\s\S]*Received[\s\S]*<\/div><div class="zone gates">[\s\S]*Rules[\s\S]*Minimize[\s\S]*Human[\s\S]*<\/div><div class="zone delivery">[\s\S]*Delivered[\s\S]*Outcome/);
+    assert.match(html, /<span class="track-dot" aria-hidden="true">1<\/span>/);
+    assert.match(html, /Masks names, tickets and secrets/); assert.match(html, /TK approves the exact words/);
     assert.match(html, /data-live="\/pr\/cpr_t1\/live"/);
     assert.doesNotMatch(html, /setInterval\(|http-equiv="refresh"/, "no timed page reload; only the explicit discard button reloads");
     const inbox = renderInbox([p.row], { config });
     assert.match(inbox, /data-live="\/live"/);
     assert.match(inbox, /class="mini-track"/);
+    assert.match(inbox, /<span class="g" data-status=/, 'gate segments are marked in the Inbox bar');
     assert.doesNotMatch(inbox, /setInterval\(|http-equiv="refresh"/);
 });
 test('live endpoints return fresh HTML only when the state changed', async () => {

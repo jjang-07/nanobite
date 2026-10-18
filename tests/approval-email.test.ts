@@ -11,12 +11,12 @@ function row(draft: string) {
     updatePr(db, 'cpr_mail', { draft_answer: draft, draft_flagged: JSON.stringify(['v2.5']), removals: JSON.stringify([{ placeholder: '[another customer]', count: 3 }, { placeholder: '[ticket]', count: 2 }]), matched_source_ids: JSON.stringify(['s1:1', 's1:2']) });
     return getPr(db, 'cpr_mail')!;
 }
-test('approval email: styled HTML puts the exact draft first, then the key facts as tags, then reply options', () => {
+test('approval email: styled HTML with the exact answer, decision buttons, and collapsed details', () => {
     const mail = buildApprovalEmail(row('Pass one idempotencyKey.\n\nconst k = randomUUID();'), config);
     const html = mail.bodyHtml;
     assert.match(html, /^<!doctype html>/i);
-    const draftAt = html.indexOf('Pass one idempotencyKey.'), factsAt = html.indexOf('[another customer]'), replyAt = html.indexOf('approve always');
-    assert.ok(draftAt > 0 && draftAt < factsAt && factsAt < replyAt, 'draft, then facts, then reply options');
+    const draftAt = html.indexOf('Pass one idempotencyKey.'), buttonsAt = html.indexOf('>Approve<'), detailsAt = html.indexOf('<details');
+    assert.ok(draftAt > 0 && draftAt < buttonsAt && buttonsAt < detailsAt, 'exact answer, then buttons, then collapsed details');
     assert.match(html, /white-space:\s*pre-wrap/);
     for (const tag of ['[another customer] ×3', '[ticket] ×2', 'v2.5', 'acme-sdk/retries', 'cpr_mail'])
         assert.ok(html.includes(tag.replace('×', '&times;')) || html.includes(tag), tag);

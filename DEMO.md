@@ -22,8 +22,8 @@
    > Run npm run demo:test. If it fails, ask Acme's agent sdk-help@fair-fly.primitive.email with request_context, topic acme-sdk/retries, on behalf of Yunha. Don't wait for the answer.
 
    Red, 2 charges instead of 1. The agent gets `pending` and moves on. **Say:** "It doesn't block. A human at Acme decides what leaves."
-3. **TK's phone buzzes** about 5 seconds later. **Say while TK reads:** "The customer name is already masked. The model flagged the unreleased v2.5. TK sees the exact words."
-4. **TK replies `approve`.** The answer is delivered about 1 second later.
+3. **TK's phone buzzes** about 10 seconds later. **Say while TK reads:** "TK reads a plain-English summary first, then the exact words. The customer name is already masked, and the model flagged the unreleased v2.5."
+4. **TK taps Approve, then Send.** The button writes the reply for TK. The tracker on the Inbox page fills Gate 3, then Delivered, without a refresh.
 5. **Paste into Claude Code:**
    > Check the request. Apply the fix from the capsule, rerun npm run demo:test, and report the outcome.
 

@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { getPr, insertPr, updatePr, addEvent, transaction, listPrs } from '../db/db.ts';
-import { encodeEnvelope, parseEnvelope } from '../envelope.ts';
+import { encodeEnvelope, parseEnvelope, prIdFromSubject } from '../envelope.ts';
 import { nowIso } from '../ids.ts';
 import type { InboundDetail } from '../primitive/client.ts';
 import type { Deps } from './worker.ts';
@@ -28,6 +28,9 @@ export async function pollInbound(db: DatabaseSync, deps: Deps) {
         if (db.prepare('SELECT 1 FROM inbound_seen WHERE email_id=?').get(item.id))
             continue;
         const detail = await deps.clientFor(identity).getEmail(item.id);
+        const decidesFor = parseEnvelope(detail.bodyText)?.kind === 'request' ? null : prIdFromSubject(detail.subject);
+        if (decidesFor)
+            await handleInboundDecision(db, deps, detail, decidesFor);
         transaction(db, () => { handleInboundRequest(db, deps, detail); db.prepare('INSERT OR IGNORE INTO inbound_seen(email_id,identity,seen_at) VALUES(?,?,?)').run(item.id, identity, nowIso()); });
     }
     db.prepare('INSERT INTO cursors(identity,since) VALUES(?,?) ON CONFLICT(identity) DO UPDATE SET since=excluded.since').run(identity, r.nextSince);
@@ -118,6 +121,28 @@ export async function finalize(db: DatabaseSync, deps: Deps, p: PrRow, decision:
             db.prepare('UPDATE sent_emails SET handled=1 WHERE sent_email_id=?').run(p.approval_sent_email_id);
     });
     await sendFinalized(db, deps, getPr(db, p.id)!);
+}
+/**
+ * A decision sent with an email button arrives as a fresh email, not a threaded reply, so Primitive
+ * does not link it to the approval email. Accept it only for a request still awaiting approval, only
+ * from the approver's address, and only with a DMARC pass. Anything else is logged and ignored.
+ */
+export async function handleInboundDecision(db: DatabaseSync, deps: Deps, detail: InboundDetail, prId: string) {
+    const p = getPr(db, prId);
+    if (!p || p.state !== 'awaiting_approval' || p.responder_identity !== deps.config.RESPONDER_IDENTITY)
+        return;
+    const approver = bareAddress(p.approver ?? deps.config.APPROVER_EMAIL).toLowerCase(), from = bareAddress(detail.fromEmail).toLowerCase();
+    const reason = from !== approver ? 'sender is not the approver' : detail.dmarcPass !== true ? 'sender failed DMARC' : null;
+    if (reason) {
+        addEvent(db, p.id, 'reply_ignored', { email_id: detail.id, from, reason });
+        return;
+    }
+    // It arrived as an email, so strip quoting and phone signatures whatever the configured mail mode.
+    const parsed = parseDecision(detail.bodyText, { local: false });
+    if (['approve', 'approve_always', 'deny', 'edit'].includes(parsed.decision))
+        await finalize(db, deps, p, parsed.decision, parsed.text, parsed.reason, from);
+    else
+        addEvent(db, p.id, 'reply_ignored', { email_id: detail.id, from, reason: 'no decision word on the first line' });
 }
 export async function pollApprovals(db: DatabaseSync, deps: Deps) {
     await Promise.all(listPrs(db, { state: 'awaiting_approval' }).map(async (p) => {
