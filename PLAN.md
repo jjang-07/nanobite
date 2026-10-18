@@ -70,3 +70,11 @@ Still open: the physical checklist.
 - Size claim: `npm run stats:sessions` measures real local Claude Code sessions (text only, thinking excluded, aggregates only, nothing sent). On this laptop: 61 sessions, median 52,403 characters. HANDOVER's pitch, demo step and checklist now use this in characters instead of the unsupported "40,000 tokens".
 - Benchmark regenerated with the renamed fixture: 3 passed with `claude-opus-5-5`; capsules about 500 to 660 characters.
 - 105 tests pass; typecheck clean.
+
+## Real-agent rehearsal, client setup, preflight (2026-10-17, user request)
+
+- Approver set to TK's address (user supplied). Primitive refused a delivery check with `recipient_not_allowed` and fix `wait_for_inbound`: TK must email the responder address once before approvals can reach TK. Nothing was sent to TK.
+- `npm run connect -- <claude|codex> [http|stdio]` registers ContextPR with Claude Code for this folder, or prints the Codex config block; the token is never written into Codex config. Tested.
+- `npm run preflight` makes read-only checks of keys, model, Primitive account, approver reachability, seeded data, HTTP token, worker, mock Acme API and the red starting test, and prints a fix for each problem. Approver reachability is tested.
+- Real-agent rehearsal on a throwaway database with an internal approver: Claude Code (headless, limited to the demo test command and the ContextPR tools) ran the red test, called `request_context` over HTTP MCP, reported `pending` and the `next_action` without waiting. The approver replied `approve` through Primitive; delivery followed in about 1 second. A new Claude Code session fetched the capsule, made the one-line `preserveIdempotencyKey` change, reran the test green, and recorded `passed`. `charge.ts` was restored to red afterward.
+- `DEMO.md` is the one-page stage script.

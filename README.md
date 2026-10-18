@@ -82,16 +82,21 @@ Every response carries `next_action`, and every error says how to recover.
 
 **Over HTTP (recommended).** When `MCP_HTTP_TOKEN` is set in `.env`, `npm start` also serves the same tools at `http://127.0.0.1:8788/mcp` using streamable HTTP. Any MCP client can connect with the bearer token; the server is stateless, so many agents can share it. It binds to loopback and checks Host and Origin. To reach it from another machine, put it behind a tunnel or proxy and add that hostname to `MCP_HTTP_ALLOWED_HOSTS`; the token is still required.
 
+One command connects either client over either transport, reading paths and the token from `.env`:
+
 ```sh
-# Claude Code
-claude mcp add --transport http contextpr http://127.0.0.1:8788/mcp --header "Authorization: Bearer $MCP_HTTP_TOKEN"
-# Codex: copy Option A from codex.config.example.toml into ~/.codex/config.toml, then
-export CONTEXTPR_MCP_TOKEN=$MCP_HTTP_TOKEN
+npm run connect -- claude          # Claude Code over HTTP (registered for this folder)
+npm run connect -- claude stdio    # Claude Code over stdio
+npm run connect -- codex           # prints the ~/.codex/config.toml block for HTTP
+npm run connect -- codex stdio     # prints the stdio block
+npm run connect -- remove          # removes the Claude Code registration
 ```
 
-**Over stdio.** `.mcp.json` launches `src/mcp/server.ts` for a client started in this directory, and Option B in `codex.config.example.toml` does the same for Codex. Use the same `.env` and `CONTEXTPR_DB` as the worker. The MCP process never starts a second worker.
+**Over stdio.** The MCP server is launched as a subprocess instead; `.mcp.json` does this for any Claude Code started in this directory. Use the same `.env` and `CONTEXTPR_DB` as the worker. The MCP process never starts a second worker.
 
-Both transports serve one shared tool definition, verified by tests. The HTTP endpoint was also exercised live with Primitive email; see PLAN.md.
+Both transports serve one shared tool definition, verified by tests. Claude Code was verified live as the requesting agent over HTTP: it ran the red test, called `request_context`, followed `next_action`, applied the approved capsule, turned the test green, and called `report_outcome`. See PLAN.md.
+
+Before a demo, `npm run preflight` checks keys, the model, the Primitive account, whether the approver can be emailed, seeded data, the HTTP token, and that the demo test starts red, and prints a fix for anything missing.
 
 ## Rehearse the red-to-green fix
 

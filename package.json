@@ -14,7 +14,9 @@
     "demo:test": "node --test demo/yunha-app/concurrent-retry.test.ts",
     "smoke:primitive": "node --env-file-if-exists=.env scripts/smoke-primitive.ts",
     "benchmark": "node --env-file-if-exists=.env scripts/benchmark.ts",
-    "stats:sessions": "node scripts/session-stats.ts"
+    "stats:sessions": "node scripts/session-stats.ts",
+    "connect": "node --env-file-if-exists=.env scripts/connect-agent.ts",
+    "preflight": "node --env-file-if-exists=.env scripts/preflight.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
