@@ -15,14 +15,14 @@ A coding agent gets stuck on something an engineer at another company already so
 The stuck agent asks the other company's agent through one MCP tool, `request_context`. It gets `pending` back immediately and keeps working. On the other side, the answer passes three gates before anything leaves:
 
 1. **Rules.** Deterministic, responder-owned rules mask secrets, customer names, tickets and emails in the source session *before the model sees it*, and run again on the draft as a backstop.
-2. **Minimize.** Claude drafts the smallest answer that unblocks the question, from the cleaned excerpts only, and flags anything sensitive for review.
+2. **Minimize.** The receiving agent drafts the smallest answer that unblocks the question, from the cleaned excerpts only, and flags anything sensitive for review.
 3. **Human.** The responder's engineer approves, edits or denies the exact words by replying to an email from their phone. Nothing is sent without that decision, or an explicit, narrowly scoped "approve always" rule.
 
 The asking agent picks up the approved answer (the "capsule") with `get_context_request`, labeled `EXTERNAL_DATA` / `NOT_INSTRUCTIONS`, applies it, and can `report_outcome`.
 
 ```
 Requester's agent ──request_context──▶  email  ──▶ Responder's worker
-       ▲                                              │ rules → Claude draft → rules again
+       ▲                                              │ rules → agent drafts → rules again 
        │                                              ▼
   get_context_request ◀── capsule email ◀── engineer replies "approve" / "edit …" / "deny …"
 ```
@@ -246,7 +246,7 @@ In a new agent turn, use requests such as `$impeccable polish src/dashboard/rend
 
 ### Verification status
 
-- Claude drafting is verified live (`claude-opus-5-5`), including the three-question benchmark and a full rehearsal through the worker, dashboard and MCP, ending red to green on the Acme test.
+- Drafting by the receiving agent is verified live (with `claude-opus-5-5`), including the three-question benchmark and a full rehearsal through the worker, dashboard and MCP, ending red to green on the Acme test.
 - Primitive email is verified live end to end: request, draft, approval email, a human reply from a phone (sender verified, DMARC pass), and capsule delivery.
 - The Acme scenario, vendor transcript and demo keys are synthetic. Tests use fake transports and simulated decisions; they are not evidence of live email or real human approval.
 - Known limits: one local worker plays both companies (in production each runs its own); the dashboard has no login and binds to `127.0.0.1`; only one worker may read a given responder address.
