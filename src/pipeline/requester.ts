@@ -12,7 +12,15 @@ export function assertSendAccepted(r: SendResult) {
 }
 export const createRequest = requestContext;
 export function recordSent(db: DatabaseSync, id: string, prId: string, purpose: string, identity: string, handled = 0) { db.prepare('INSERT OR IGNORE INTO sent_emails(sent_email_id,pr_id,purpose,identity,handled,created_at) VALUES(?,?,?,?,?,?)').run(id, prId, purpose, identity, handled, nowIso()); }
-export function recordError(db: DatabaseSync, id: string, e: unknown) { const message = e instanceof Error ? e.message : 'Unknown worker error'; addEvent(db, id, 'error', { message }); console.error(`ContextPR ${id}: ${message}`); }
+/** Logs an error once per streak: the worker retries every second, so an unchanged error is not re-logged. */
+export function recordError(db: DatabaseSync, id: string, e: unknown) {
+    const message = e instanceof Error ? e.message : 'Unknown worker error';
+    const last = db.prepare('SELECT kind, detail FROM events WHERE pr_id=? ORDER BY id DESC LIMIT 1').get(id);
+    if (last?.kind === 'error' && JSON.parse(String(last.detail ?? '{}'))?.message === message)
+        return;
+    addEvent(db, id, 'error', { message });
+    console.error(`ContextPR ${id}: ${message}`);
+}
 export async function sendQueuedRequests(db: DatabaseSync, deps: Deps) {
     for (const p of listPrs(db, { state: 'queued' })) {
         try {
