@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { openDb, migrate, insertPr, updatePr, getPr, listEvents } from '../src/db/db.ts';
 import { buildApprovalEmail, parseDecision } from '../src/gates/approval.ts';
 import { setup, queued, incoming, config } from './helpers.ts';
-import { pollInbound, processReceived } from '../src/pipeline/responder.ts';
+import { pollInbound, processReceived, DMARC_WAIT_MS } from '../src/pipeline/responder.ts';
 const cfg = { ...config, APPROVER_NAME: 'TK' };
 function row() {
     const db = openDb(':memory:'); migrate(db);
@@ -47,10 +47,10 @@ test('a decision composed by a button (a fresh email, not a threaded reply) is a
     await pollInbound(s.db, s.deps);
     await processReceived(s.db, s.deps);
     assert.equal(getPr(s.db, id)!.state, 'awaiting_approval');
-    const fresh = (n: number, from: string, body: string, dmarcPass = true, subject = `Re: [Nanobite ${id}] Approve answer`) =>
-        s.mail.deliverInbound({ id: `fresh_${n}`, fromEmail: from, toEmail: config.RESPONDER_IDENTITY, subject, bodyText: body, dmarcPass });
+    const fresh = (n: number, from: string, body: string, dmarcPass = true, subject = `Re: [Nanobite ${id}] Approve answer`, receivedAt = new Date().toISOString()) =>
+        s.mail.deliverInbound({ id: `fresh_${n}`, fromEmail: from, toEmail: config.RESPONDER_IDENTITY, subject, bodyText: body, dmarcPass, receivedAt });
     fresh(1, 'mallory@evil.example', 'approve');
-    fresh(2, config.APPROVER_EMAIL, 'approve', false);
+    fresh(2, config.APPROVER_EMAIL, 'approve', false, undefined, new Date(Date.now() - DMARC_WAIT_MS - 1000).toISOString());
     await pollInbound(s.db, s.deps);
     assert.equal(getPr(s.db, id)!.state, 'awaiting_approval', 'wrong sender and failed DMARC are refused');
     assert.equal(listEvents(s.db, id).filter(e => e.kind === 'reply_ignored').length, 2);
@@ -79,4 +79,19 @@ test('a long edit opens empty fields rather than a placeholder that could be sen
     assert.match(body, /Decision reason \(optional\):/);
     assert.match(body, /Answer to share:/);
     assert.equal(parseDecision(body).decision, 'unrecognized');
+});
+test('a button decision read before its DMARC result is ready is retried, not ignored', async () => {
+    const s = setup();
+    const id = queued(s.db);
+    s.mail.deliverInbound(incoming(id));
+    await pollInbound(s.db, s.deps);
+    await processReceived(s.db, s.deps);
+    s.mail.deliverInbound({ id: 'early', fromEmail: config.APPROVER_EMAIL, toEmail: config.RESPONDER_IDENTITY, subject: `Re: [Nanobite ${id}] Approve answer`, bodyText: 'approve', dmarcPass: undefined });
+    await pollInbound(s.db, s.deps);
+    assert.equal(getPr(s.db, id)!.state, 'awaiting_approval');
+    assert.equal(listEvents(s.db, id).filter(e => e.kind === 'reply_ignored').length, 0, 'not ignored while the result may still arrive');
+    assert.equal(s.db.prepare("SELECT 1 FROM inbound_seen WHERE email_id='early'").get(), undefined);
+    s.mail.inbox.get('early')!.dmarcPass = true;
+    await pollInbound(s.db, s.deps);
+    assert.equal(getPr(s.db, id)!.state, 'approved');
 });

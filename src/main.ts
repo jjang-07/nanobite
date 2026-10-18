@@ -15,7 +15,8 @@ process.once('SIGINT', () => abort.abort());
 process.once('SIGTERM', () => abort.abort());
 async function closeServer(server: Server | undefined) {
     if (server?.listening)
-        await new Promise<void>(resolve => { server.close(() => resolve()); server.closeIdleConnections(); });
+        await new Promise<void>(resolve => { server.close(() => resolve()); server.closeAllConnections(); });
+    // closeAll, not closeIdle: an open Inbox tab holds a live-update request that would otherwise block exit.
 }
 try {
     db = openDb(config.CONTEXTPR_DB);

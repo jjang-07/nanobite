@@ -24,16 +24,21 @@ export async function pollInbound(db: DatabaseSync, deps: Deps) {
     const identity = deps.config.RESPONDER_IDENTITY;
     const cursor = db.prepare('SELECT since FROM cursors WHERE identity=?').get(identity)?.since as string | null | undefined;
     const r = await deps.clientFor(identity).listInbound(identity, cursor ?? null, deps.config.POLL_WAIT_SECONDS);
+    let deferred = false;
     for (const item of r.items) {
         if (db.prepare('SELECT 1 FROM inbound_seen WHERE email_id=?').get(item.id))
             continue;
         const detail = await deps.clientFor(identity).getEmail(item.id);
         const decidesFor = parseEnvelope(detail.bodyText)?.kind === 'request' ? null : prIdFromSubject(detail.subject);
-        if (decidesFor)
-            await handleInboundDecision(db, deps, detail, decidesFor);
+        if (decidesFor && await handleInboundDecision(db, deps, detail, decidesFor) === 'retry') {
+            deferred = true;
+            continue;
+        }
         transaction(db, () => { handleInboundRequest(db, deps, detail); db.prepare('INSERT OR IGNORE INTO inbound_seen(email_id,identity,seen_at) VALUES(?,?,?)').run(item.id, identity, nowIso()); });
     }
-    db.prepare('INSERT INTO cursors(identity,since) VALUES(?,?) ON CONFLICT(identity) DO UPDATE SET since=excluded.since').run(identity, r.nextSince);
+    // Keep the cursor while a decision waits for its DMARC result, so the next poll lists it again.
+    if (!deferred)
+        db.prepare('INSERT INTO cursors(identity,since) VALUES(?,?) ON CONFLICT(identity) DO UPDATE SET since=excluded.since').run(identity, r.nextSince);
 }
 import type { PrRow } from '../db/db.ts';
 import type { ReplyEmail } from '../primitive/client.ts';
@@ -146,12 +151,17 @@ export async function finalize(db: DatabaseSync, deps: Deps, p: PrRow, decision:
  * A decision sent with an email button arrives as a fresh email, not a threaded reply, so Primitive
  * does not link it to the approval email. Accept it only for a request still awaiting approval, only
  * from the approver's address, and only with a DMARC pass. Anything else is logged and ignored.
+ * Primitive can list an email a moment before its authentication results are ready, so a missing
+ * pass from the approver is retried for DMARC_WAIT_MS before the reply is ignored.
  */
-export async function handleInboundDecision(db: DatabaseSync, deps: Deps, detail: InboundDetail, prId: string) {
+export const DMARC_WAIT_MS = 60000;
+export async function handleInboundDecision(db: DatabaseSync, deps: Deps, detail: InboundDetail, prId: string): Promise<'retry' | void> {
     const p = getPr(db, prId);
     if (!p || p.state !== 'awaiting_approval' || p.responder_identity !== deps.config.RESPONDER_IDENTITY)
         return;
     const approver = bareAddress(p.approver ?? deps.config.APPROVER_EMAIL).toLowerCase(), from = bareAddress(detail.fromEmail).toLowerCase();
+    if (from === approver && detail.dmarcPass !== true && Date.now() - Date.parse(detail.receivedAt) < DMARC_WAIT_MS)
+        return 'retry';
     const reason = from !== approver ? 'sender is not the approver' : detail.dmarcPass !== true ? 'sender failed DMARC' : null;
     if (reason) {
         addEvent(db, p.id, 'reply_ignored', { email_id: detail.id, from, reason });

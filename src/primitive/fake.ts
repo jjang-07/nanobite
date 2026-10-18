@@ -23,7 +23,8 @@ export class FakePrimitive implements PrimitiveClient {
         fromEmail: string;
         toEmail: string;
     }) { this.inbox.set(d.id, { threadId: `thread_${d.id}`, sender: d.fromEmail, recipient: d.toEmail, subject: null, receivedAt: new Date().toISOString(), snippet: null, fyi: false, automated: false, bodyText: null, bodyHtml: null, replyToSentEmailId: null, inReplyTo: [], references: [], attachments: [], ...d }); this.pending.push(d.id); }
-    async listInbound(recipient: string, since: string | null, _waitSeconds: number) { const ids = this.pending.filter(id => this.inbox.get(id)?.recipient === recipient); this.pending = this.pending.filter(id => !ids.includes(id)); const items = ids.map(id => this.inbox.get(id)!); const last = items.at(-1); return { items, nextSince: last ? `${last.receivedAt}|${last.id}` : since }; }
+    // Like Primitive, list what arrived after the cursor; a caller that keeps its cursor sees the same emails again.
+    async listInbound(recipient: string, since: string | null, _waitSeconds: number) { const after = since ? this.pending.indexOf(since.slice(since.lastIndexOf('|') + 1)) + 1 : 0; const ids = this.pending.slice(after).filter(id => this.inbox.get(id)?.recipient === recipient); const items = ids.map(id => this.inbox.get(id)!); const last = items.at(-1); return { items, nextSince: last ? `${last.receivedAt}|${last.id}` : since }; }
     async getEmail(id: string) { const d = this.inbox.get(id); if (!d)
         throw new Error(`Unknown fake email ${id}`); return d; }
 }
