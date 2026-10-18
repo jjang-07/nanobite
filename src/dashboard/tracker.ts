@@ -187,7 +187,7 @@ export const trackerStyles = `
 .mini-track{display:flex;gap:4px;margin-top:6px}.mini-track span{width:22px;height:3px;background:var(--line)}
 .mini-track span[data-status=done]{background:var(--state)}
 .mini-track span[data-status=current]{background:#8fb0dd}.mini-track span[data-status=stopped]{background:#181818}
-.summary-block{margin:4px 0 22px;max-width:72ch}.summary-block p{margin:0}.summary-text{font-size:18px;line-height:1.5;font-weight:500}
+.summary-block{margin:4px 0 22px;max-width:72ch}.summary-block p{margin:0}.summary-text{font-size:18px;line-height:1.5;font-weight:500}.decision-summary{max-width:72ch;margin:4px 0 8px}.shared-text>summary{font-weight:500}.shared-text .exact{padding-top:4px}
 .live-stamp{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .intro.top{margin-bottom:10px}.status-block{margin-bottom:0}
 @media(max-width:760px){.track{grid-template-columns:1fr}.track-step{padding:0 0 18px 32px}.track-step::before{top:0;bottom:0;left:7px;right:auto;width:2px;height:auto}.track-step:last-child::before{display:none}.track-kicker{display:inline;margin-right:8px}.track-title{display:inline}.track-kicker:empty,.track-step:not([data-group=gate]) .track-kicker{display:none}.track-step.just-done::before{transform-origin:top center;animation-name:line-fill-v}}

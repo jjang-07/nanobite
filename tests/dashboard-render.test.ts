@@ -10,9 +10,10 @@ function message(purpose = 'approval'): LocalInboxMessage { return { id: 'in_app
 const config = loadConfig({});
 test('Inbox includes the complete review table and no request form, since agents file requests', () => {
     const html = renderInbox([sample()], { csrfToken: 'safe-token', config });
-    for (const value of ['cpr_demo', 'awaiting_approval', 'sdk/retries', '/pr/cpr_demo', 'Requester', 'Responder', 'Decision', 'Removals', 'Outcome', 'Updated', 'Local inbox', 'Ollama', 'Synthetic fixture demo'])
+    for (const value of ['cpr_demo', 'awaiting_approval', 'sdk/retries', '/pr/cpr_demo', 'Requester', 'Decision', 'Outcome', 'Updated', 'Local inbox', 'Ollama', 'Synthetic fixture demo'])
         assert.ok(html.includes(value), value);
     assert.doesNotMatch(html, /action="\/requests"|name="question"/);
+    assert.doesNotMatch(html, /<th[^>]*>(Responder|Removals)<\/th>/, 'the Inbox leaves the responder and removal counts to the request page');
     assert.doesNotMatch(html, /<meta[^>]+http-equiv="refresh"/i);
     assert.match(html, /dirty/);
 });
@@ -98,7 +99,12 @@ test('notification exposes explicit revoke; stale or answered approvals have no 
     const delivered = renderPr({ ...pr, state: 'delivered' }, [], { config, messages: [message()] });
     assert.doesNotMatch(delivered, /value="approve"|Review before sharing|before approving/);
     assert.match(delivered, /Flags raised during drafting/);
-    assert.match(delivered, /The decision and approved text are shown below/);
+    assert.doesNotMatch(delivered, /id="draft-heading"|<summary>Draft answer<\/summary>/, 'once decided, the draft is not repeated');
+    assert.match(delivered, /<details class="shared-text"><summary>Exact text shared<\/summary>/);
+    assert.match(delivered, /Changes from the draft/, 'an edited answer shows its changes');
+    const approvedAsIs = renderPr({ ...pr, state: 'delivered', decision: 'approve', approved_text: pr.draft_answer }, [], { config });
+    assert.doesNotMatch(approvedAsIs, /Changes from the draft/, 'an unedited answer has no changes to show');
+    assert.match(approvedAsIs, /Approved by you/);
     assert.doesNotMatch(renderPr(pr, [], { config, messages: [{ ...message(), sentEmailId: 'old' }] }), /value="approve"/);
 });
 test('all untrusted fields and form values are escaped; locked design has no decorative elements', () => {

@@ -107,9 +107,9 @@ Main questions have a maximum width of 36 characters. Prose is limited to roughl
 
 The shell is centered at a maximum width of 1320px with 40px side gutters. Gutters become 28px below 1000px and 20px below 760px. Sections use a top separator, about 28px of internal space, and a 32px preceding gap.
 
-The desktop inbox is a compact nine-column table. The question and request link lead each row; state and operational metadata follow. Below 760px, each row becomes a vertical series of labeled fields. Keep all data available and avoid a horizontally scrolling page. Native table headers remain accessible.
+The desktop inbox is a compact table: question, state, requester, topic, decision and updated time (plus outcome once one is reported). The question and request link lead each row; state and operational metadata follow. Below 760px, each row becomes a vertical series of labeled fields. Keep all data available and avoid a horizontally scrolling page. Native table headers remain accessible.
 
-Forms use two columns where space allows and one column on small screens. The question and supporting context occupy the full width. Detail pages place the question and state first, then draft and review, three-gate summary, decision, request context, timeline, and collapsed technical evidence.
+Forms use two columns where space allows and one column on small screens. The question and supporting context occupy the full width. Detail pages place the question, state and tracker first. While a review is pending, the open Draft answer (summary, exact words, flags) and Your review follow. Once decided, Decision and delivery leads instead: the plain-language summary, the decision with its time, delivery, any reason, a collapsed Exact text shared, and Changes from the draft only when the answer was actually edited. The draft is not repeated after a decision: an unedited draft is the shared text and an edit shows its changes. Model flags move into the decision facts. The Activity log and collapsed technical evidence close the page.
 
 ## Elevation & Depth
 
