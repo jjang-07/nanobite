@@ -69,9 +69,7 @@ ${eyebrow('Exact answer')}
 <div style="border-left:3px solid ${C.text};padding:2px 0 2px 16px;font-size:15px;line-height:1.65;color:${C.text};white-space:pre-wrap;word-break:break-word">${esc(draft)}</div>
 </td></tr>
 ${flagged}
-<tr><td style="padding:36px 0 0">${buttons}
-<p style="margin:6px 0 0;font-size:13px;line-height:1.5;color:${C.muted}">Each button opens a ready-to-send email. Tap Send to confirm. <a href="${esc(decisionMailto(to, re, 'approve always'))}" style="color:${C.text}">Approve and auto-approve this topic from now on</a></p>
-</td></tr>
+<tr><td style="padding:36px 0 0">${buttons}</td></tr>
 <tr><td style="padding:36px 0 0;font-size:14px;line-height:1.6;color:${C.muted};word-break:break-word;overflow-wrap:anywhere">Requested by <span style="color:${C.text}">${esc(p.requester_identity)}</span> for ${esc(p.on_behalf_of ?? 'an engineer')} · topic ${tag(p.topic)}</td></tr>
 <tr><td style="padding:20px 0 0">
 <details class="nb-d"><summary class="nb-s" style="display:none;mso-hide:all;cursor:pointer;padding:10px 0;font-size:14px;color:${C.text};border-top:1px solid ${C.line}">Details</summary>

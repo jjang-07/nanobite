@@ -19,7 +19,9 @@ test('approval email: plain summary, exact answer, then Approve / Deny / Edit bu
     assert.ok(at('Each retry looks like a new payment') < at('Pass one idempotencyKey') && at('Pass one idempotencyKey') < at('>Approve<'), 'summary, then exact answer, then buttons');
     const links = mailtos(html);
     const byBody = Object.fromEntries(links.map(u => [decodeURIComponent(u.searchParams.get('body') ?? '').split(/\r?\n/)[0], u]));
-    for (const cmd of ['approve', 'deny', 'edit', 'approve always']) {
+    assert.equal(links.length, 3, 'only the three buttons');
+    assert.doesNotMatch(html, /ready-to-send|Tap Send|auto-approve/);
+    for (const cmd of ['approve', 'deny', 'edit']) {
         const u = byBody[cmd];
         assert.ok(u, `button for ${cmd}`);
         assert.equal(decodeURIComponent(u.pathname), 'sdk-help@fair-fly.primitive.email');
