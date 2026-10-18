@@ -10,7 +10,7 @@ test('fake default and explicit drafts preserve the expected contract', async ()
     assert.match(draft.answer, /\[another customer\]/);
     assert.ok(draft.flagged.includes('v2.5'));
     assert.deepEqual(draft.used_excerpt_ids, ['session:1']);
-    const canned: Draft = { answer: 'exact replacement', why_relevant: 'A source matches.', confidence: 'high', used_excerpt_ids: ['session:1'], flagged: [] };
+    const canned: Draft = { answer: 'exact replacement', summary: 'Plain summary.', why_relevant: 'A source matches.', confidence: 'high', used_excerpt_ids: ['session:1'], flagged: [] };
     assert.deepEqual(await new FakeDrafter(canned).draft(input), canned);
     assert.throws(() => DraftSchema.parse({ ...canned, extra: 'unexpected' }));
 });

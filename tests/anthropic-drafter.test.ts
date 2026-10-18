@@ -4,7 +4,7 @@ import { AnthropicDrafter } from '../src/gates/draft.ts';
 import type { Excerpt } from '../src/types.ts';
 const excerpts: Excerpt[] = [{ id: 's:1', session_id: 's', turn_index: 1, role: 'assistant', text: 'Set preserveIdempotencyKey: true.' }];
 const input = { question: 'How do I fix retry duplicates?', excerpts };
-const draft = { answer: 'Set preserveIdempotencyKey: true.', why_relevant: 'The source covers retries.', confidence: 'high' as const, used_excerpt_ids: ['s:1'], flagged: [] };
+const draft = { answer: 'Set preserveIdempotencyKey: true.', summary: 'Reuse one key across retries.', why_relevant: 'The source covers retries.', confidence: 'high' as const, used_excerpt_ids: ['s:1'], flagged: [] };
 function fakeClient(response: Record<string, unknown>) {
     const calls: any[] = [];
     return { calls, client: { messages: { parse: async (params: any) => { calls.push(params); return response; } } } };

@@ -15,7 +15,7 @@ test('search → rules → local drafting → rules stores a safe draft for expl
     loadTranscriptFile(s.db, config.RESPONDER_IDENTITY, new URL('../demo/fixtures/tk-session.jsonl', import.meta.url).pathname);
     seedRules(s.db, new URL('../demo/fixtures/rules.sql', import.meta.url).pathname, config.RESPONDER_IDENTITY);
     let saw = false;
-    const drafter = { async draft(input: any) { saw = true; assert.ok(input.excerpts.length); const source = JSON.stringify(input.excerpts); assert.doesNotMatch(source, /Northwind|ACME-4821|NEVER_LEAK_THIS_THINKING_TEXT/); return new FakeDrafter({ answer: 'Northwind Traders fixed ACME-4821: use withRetry(fn, { preserveIdempotencyKey: true }).', why_relevant: 'Same SDK retry bug.', confidence: 'high', used_excerpt_ids: input.excerpts.map((e: any) => e.id), flagged: ['v2.5', 'unreleased'] }).draft(input); } };
+    const drafter = { async draft(input: any) { saw = true; assert.ok(input.excerpts.length); const source = JSON.stringify(input.excerpts); assert.doesNotMatch(source, /Northwind|ACME-4821|NEVER_LEAK_THIS_THINKING_TEXT/); return new FakeDrafter({ answer: 'Northwind Traders fixed ACME-4821: use withRetry(fn, { preserveIdempotencyKey: true }).', summary: 'Northwind hit the same retry bug. Reuse one key.', why_relevant: 'Same SDK retry bug.', confidence: 'high', used_excerpt_ids: input.excerpts.map((e: any) => e.id), flagged: ['v2.5', 'unreleased'] }).draft(input); } };
     await processReceived(s.db, { ...s.deps, drafter });
     const p = getPr(s.db, id)!;
     assert.ok(saw);

@@ -67,10 +67,10 @@ export async function processReceived(db: DatabaseSync, deps: Deps) {
                 if (!deps.drafter)
                     throw new Error('No model provider configured. Configure Claude or local Ollama and create a new request.');
                 const draft = await deps.drafter.draft({ question: p.question, context: p.context_hint ?? undefined, excerpts: clean });
-                const answer = applyRules(draft.answer, rules);
+                const answer = applyRules(draft.answer, rules), summary = applyRules(draft.summary, rules);
                 removals = mergeRemovals(removals, answer.removals);
                 const flagged = draft.flagged.map(f => applyRules(f, rules).text);
-                updatePr(db, p.id, { draft_answer: answer.text, draft_flagged: JSON.stringify(flagged), removals: JSON.stringify(removals), matched_source_ids: JSON.stringify(excerpts.map(e => e.id)) });
+                updatePr(db, p.id, { draft_answer: answer.text, draft_summary: summary.text, draft_flagged: JSON.stringify(flagged), removals: JSON.stringify(removals), matched_source_ids: JSON.stringify(excerpts.map(e => e.id)) });
                 addEvent(db, p.id, 'rules_applied', { removals });
                 addEvent(db, p.id, 'drafted', { confidence: draft.confidence, why_relevant: applyRules(draft.why_relevant, rules).text, used_excerpt_ids: draft.used_excerpt_ids });
             }

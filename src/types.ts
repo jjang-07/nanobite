@@ -20,6 +20,8 @@ export interface Excerpt {
 }
 export interface Draft {
     answer: string;
+    /** One or two plain-language sentences for the approver. Never sent to the requester. */
+    summary: string;
     why_relevant: string;
     confidence: 'high' | 'medium' | 'low';
     used_excerpt_ids: string[];

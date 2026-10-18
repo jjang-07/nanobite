@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS context_prs (
   request_thread_id TEXT,
   matched_source_ids TEXT,                   -- JSON string[]
   draft_answer TEXT,                         -- gate 2 output after gate 1 (what TK sees)
+  draft_summary TEXT,                        -- plain-language summary for the approver; never sent
   draft_flagged TEXT,                        -- JSON string[] phrases the model flagged for TK
   removals TEXT,                             -- JSON Removal[] {placeholder,count}
   approval_sent_email_id TEXT,               -- email to TK

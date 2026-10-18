@@ -16,6 +16,7 @@ export interface PrRow {
     request_thread_id: string | null;
     matched_source_ids: string | null;
     draft_answer: string | null;
+    draft_summary: string | null;
     draft_flagged: string | null;
     removals: string | null;
     approval_sent_email_id: string | null;
@@ -51,7 +52,13 @@ export function openDb(path: string): DatabaseSync {
     db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;');
     return db;
 }
-export function migrate(db: DatabaseSync) { db.exec(sql); }
+/** Creates tables, then adds columns introduced after a database was first created. */
+export function migrate(db: DatabaseSync) {
+    db.exec(sql);
+    const have = new Set(db.prepare('PRAGMA table_info(context_prs)').all().map((c: any) => String(c.name)));
+    if (!have.has('draft_summary'))
+        db.exec('ALTER TABLE context_prs ADD COLUMN draft_summary TEXT');
+}
 function entries(value: Record<string, unknown>) {
     return Object.entries(value).filter(([, v]) => v !== undefined).map(([k, v]) => {
         if (!columns.has(k))
