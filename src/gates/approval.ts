@@ -61,6 +61,27 @@ export function parseDecision(body: string | null, options: {
 }
 import type { PrRow } from '../db/db.ts';
 import type { Config } from '../config.ts';
+import { applyRules } from './rules.ts';
+import type { Rule } from './rules.ts';
+const MAX_DENIAL_REASON = 500;
+const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+/**
+ * A denial reason goes to the requester, so it must never carry the draft that was denied. A mail
+ * client whose quoted original was not stripped would otherwise send the draft back as the "reason".
+ * Long reasons or reasons repeating any sentence of the draft are withheld; protection rules mask the rest.
+ */
+export function shareableDenialReason(reason: string | undefined, draft: string | null, rules: readonly Rule[]): {
+    reason: string | undefined;
+    withheld: boolean;
+} {
+    if (!reason?.trim())
+        return { reason: undefined, withheld: false };
+    const said = normalize(reason);
+    const quotesDraft = (draft ?? '').split(/(?<=[.!?])\s+|\n/).map(normalize).some(sentence => sentence.length >= 24 && said.includes(sentence));
+    if (reason.length > MAX_DENIAL_REASON || quotesDraft)
+        return { reason: undefined, withheld: true };
+    return { reason: applyRules(reason.trim(), rules).text, withheld: false };
+}
 import { approvalEmailHtml } from './email-html.ts';
 import type { Removal } from '../types.ts';
 export function buildApprovalEmail(p: PrRow, config: Config): {

@@ -40,7 +40,7 @@ import type { ReplyEmail } from '../primitive/client.ts';
 import { bareAddress } from '../primitive/client.ts';
 import type { Decision, Removal } from '../types.ts';
 import { recordSent, recordError, assertSendAccepted } from './requester.ts';
-import { parseDecision, buildApprovalEmail, buildClarificationEmail, buildNotificationEmail, buildAckEmail } from '../gates/approval.ts';
+import { parseDecision, buildApprovalEmail, buildClarificationEmail, buildNotificationEmail, buildAckEmail, shareableDenialReason } from '../gates/approval.ts';
 export function trustedReply(r: ReplyEmail, sentId: string, from: string, to: string) {
     const same = (a: string, b: string) => bareAddress(a).toLowerCase() === bareAddress(b).toLowerCase();
     return r.senderVerified && !r.fyi && same(r.fromEmail, from) && same(r.toEmail, to) && r.replyToSentEmailId === sentId;
@@ -52,8 +52,21 @@ export async function sendApproval(db: DatabaseSync, deps: Deps, p: PrRow) {
     updatePr(db, p.id, { state: 'awaiting_approval', approval_sent_email_id: r.sentEmailId, approver: deps.config.APPROVER_EMAIL });
     addEvent(db, p.id, 'approval_sent', { sent_email_id: r.sentEmailId });
 }
+/** Waits after the first and second failed drafts; the third failure is final. */
+export const DRAFT_RETRY_DELAYS_MS = [5000, 30000];
+/** Overload, timeouts and malformed model output are usually momentary; a missing provider or model, or a rejected key, is not. */
+export function retryableDraftError(e: unknown): boolean {
+    const status = (e as { status?: unknown } | null)?.status;
+    if (typeof status === 'number')
+        return status === 408 || status === 409 || status === 429 || status >= 500;
+    const message = e instanceof Error ? e.message : '';
+    return !/^(No model provider|No installed local model|Cloud Ollama)|HTTP 4\d\d/.test(message);
+}
+const draftRetries = (db: DatabaseSync, id: string) => db.prepare("SELECT detail FROM events WHERE pr_id=? AND kind='draft_retry' ORDER BY id").all(id).map(r => JSON.parse(String(r.detail ?? '{}')) as { retry_at?: string });
 export async function processReceived(db: DatabaseSync, deps: Deps) {
     for (const p of listPrs(db, { limit: 1000 }).filter(p => ['received', 'drafting'].includes(p.state))) {
+        if (p.draft_answer === null && Date.parse(draftRetries(db, p.id).at(-1)?.retry_at ?? '') > Date.now())
+            continue;
         try {
             updatePr(db, p.id, { state: 'drafting' });
             // A stored draft is immutable across transport retries: do not pay for or approve a different answer.
@@ -91,8 +104,13 @@ export async function processReceived(db: DatabaseSync, deps: Deps) {
         catch (e) {
             recordError(db, p.id, e);
             const current = getPr(db, p.id)!;
-            if (current.state === 'drafting' && current.draft_answer === null)
-                updatePr(db, p.id, { state: 'failed', decision_reason: e instanceof Error ? e.message : 'draft_failed' });
+            if (current.state === 'drafting' && current.draft_answer === null) {
+                const attempt = draftRetries(db, p.id).length + 1, delay = DRAFT_RETRY_DELAYS_MS[attempt - 1];
+                if (retryableDraftError(e) && delay !== undefined)
+                    addEvent(db, p.id, 'draft_retry', { attempt, retry_at: new Date(Date.now() + delay).toISOString() });
+                else
+                    updatePr(db, p.id, { state: 'failed', decision_reason: e instanceof Error ? e.message : 'draft_failed' });
+            }
             // Approved text and completed drafts remain recoverable; transport errors never undo a decision.
         }
     }
@@ -112,11 +130,13 @@ export async function sendFinalized(db: DatabaseSync, deps: Deps, p: PrRow) {
 }
 export async function finalize(db: DatabaseSync, deps: Deps, p: PrRow, decision: Decision, text?: string, reason?: string, approver = deps.config.APPROVER_EMAIL) {
     const denied = decision === 'deny';
+    // Denial reasons reach the requester; approval and edit reasons stay in the review record.
+    const shared = denied ? shareableDenialReason(reason, p.draft_answer, loadRules(db, p.responder_identity)) : { reason, withheld: false };
     transaction(db, () => {
         if (decision === 'approve_always')
             createRule(db, p.responder_identity, p.requester_identity, p.topic, approver, p.id);
-        updatePr(db, p.id, { state: denied ? 'denied' : 'approved', decision, decision_reason: reason ?? null, approved_text: denied ? null : decision === 'edit' ? text! : p.draft_answer, approver, decided_at: nowIso() });
-        addEvent(db, p.id, 'decision', { decision, approver });
+        updatePr(db, p.id, { state: denied ? 'denied' : 'approved', decision, decision_reason: shared.reason ?? null, approved_text: denied ? null : decision === 'edit' ? text! : p.draft_answer, approver, decided_at: nowIso() });
+        addEvent(db, p.id, 'decision', { decision, approver, ...(shared.withheld ? { reason_withheld: 'The reason was too long or repeated the draft, so it was not sent.' } : {}) });
         if (p.approval_sent_email_id)
             db.prepare('UPDATE sent_emails SET handled=1 WHERE sent_email_id=?').run(p.approval_sent_email_id);
     });
