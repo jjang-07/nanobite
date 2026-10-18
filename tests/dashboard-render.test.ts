@@ -17,10 +17,10 @@ test('Inbox includes the complete review table and no request form, since agents
     assert.doesNotMatch(html, /<meta[^>]+http-equiv="refresh"/i);
     assert.match(html, /dirty/);
 });
-test('header shows the lowercase nanobite logo and no unlinked mail-mode label', () => {
+test('header shows the supplied Nanobite image and no unlinked mail-mode label', () => {
     for (const mail of ['local', 'primitive']) {
         const html = renderInbox([], { config: loadConfig({ MAIL_PROVIDER: mail, PRIMITIVE_API_KEY: 'test', REQUESTER_IDENTITY: 'a@x.primitive.email', RESPONDER_IDENTITY: 'b@x.primitive.email', APPROVER_EMAIL: 'c@x.primitive.email' }) });
-        assert.match(html, /<a class="brand" href="\/">nanobite<\/a>/);
+        assert.match(html, /<img class="brand-logo" src="\/assets\/nanobite-logo.png" alt="Nanobite" width="1320" height="326">/);
         assert.doesNotMatch(html, /Email inbox|Local inbox/);
     }
 });
@@ -121,7 +121,7 @@ test('all untrusted fields and form values are escaped; locked design has no dec
     const detail = renderPr(pr, [{ id: 1, pr_id: pr.id, at: pr.created_at, kind: evil, detail: evil }], { csrfToken: '" onfocus="alert(1)', config, messages: [{ ...message(), bodyText: evil }] });
     for (const html of [inbox, detail]) {
         assert.ok(html.includes('&lt;'));
-        assert.doesNotMatch(html, /<img|<svg|box-shadow|linear-gradient|<script>alert|value="" onfocus=/i);
+        assert.doesNotMatch(html.replace(/<img class="brand-logo" src="\/assets\/nanobite-logo.png" alt="Nanobite" width="1320" height="326">/g, ''), /<img|<svg|box-shadow|linear-gradient|<script>alert|value="" onfocus=/i);
         assert.match(html, /background:\s*#fff/);
     }
     assert.doesNotMatch(detail, /<\/textarea><script>/);

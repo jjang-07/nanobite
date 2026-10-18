@@ -1,6 +1,6 @@
 # Nanobite: current handoff
 
-Updated October 17, 2026. Working repository: `jjang-07/nanobite`, branch `main`. This document summarizes the current implementation and this workstation's verification. **For the final demo plan, its script and the remaining pre-demo work, read `DEMO-HANDOVER.md`.** `DEMO.md` contains the currently runnable rehearsal instructions (the fallback demo); `HANDOVER.md` and `PLAN.md` retain earlier specifications and build history.
+Updated October 17, 2026. Working repository: `jjang-07/nanobite`, branch `main`. This document summarizes the current implementation and this workstation's verification. **For the **2-minute maximum** final demo plan, its script and the remaining pre-demo work, read `DEMO-HANDOVER.md`.** `DEMO.md` contains the currently runnable rehearsal instructions (the fallback demo); `HANDOVER.md` and `PLAN.md` retain earlier specifications and build history.
 
 ## What the product does
 

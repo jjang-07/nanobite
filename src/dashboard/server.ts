@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { Server, IncomingMessage, ServerResponse } from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
@@ -40,6 +41,11 @@ export async function startDashboard(db: DatabaseSync, port: number, options: {
             }
             const url = new URL(req.url ?? '/', `http://${host}`);
             if (req.method === 'GET') {
+                if (url.pathname === '/assets/nanobite-logo.png') {
+                    res.setHeader('content-type', 'image/png');
+                    res.end(readFileSync(new URL('../../assets/nanobite-logo.png', import.meta.url)));
+                    return;
+                }
                 // Live updates: JSON with fresh HTML only when the version changed, polled once a second by the page.
                 const live = (version: string, html: () => string) => {
                     res.statusCode = 200;

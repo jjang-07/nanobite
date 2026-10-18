@@ -26,7 +26,7 @@ Tracks we are entering: **Primitive** (agents with email identities that ask, re
 | Rejected: "try to steal it" heist | Dropped | Felt artificial; real use is protecting data in general, not fending off attackers. |
 | Rejected: same-company frontend/backend | Dropped | Invites "why not just Slack them?". Across companies and time zones there is no Slack and nobody awake. |
 | Who approves | TK, on TK's own phone | Two people at two companies is the whole story. (The UI says "you" so it works for any reviewer.) |
-| Automatic approval ("approve always") | Not in the main 3 minutes; mention if asked | Explained in section 7. It answers "won't the human be a bottleneck?" but adds time. |
+| Automatic approval ("approve always") | Not in the main 2 minutes; mention if asked | Explained in section 7. It answers "won't the human be a bottleneck?" but adds time. |
 | Rule order | Rules run first, on TK's session excerpts, before Claude sees anything; they run again on Claude's output as a safety net | Claude cannot build an answer on hidden context because it never sees it. See section 6. |
 | Connectors | Present with Claude Code (it can run the test). Claude Desktop and ChatGPT are optional extras | Only a coding agent can show red-to-green. |
 | Dashboard | Requests come only from agents; no request form. Four-point tracker; lowercase `nanobite` wordmark; no unlinked "Email inbox" label | Makes it obvious the agent, not a person, sends requests. |
@@ -34,7 +34,9 @@ Tracks we are entering: **Primitive** (agents with email identities that ask, re
 
 ---
 
-## 3. The final demo script (about 3 minutes)
+## 3. The final demo script (2 minutes maximum)
+
+**Hard limit: 120 seconds, including narration, email waits, both decisions, and the test fix.** The times below are rehearsal targets, not measured performance. Start with terminals, phone mirror, Rules page and paste-ready prompts open. If two live round trips cannot reliably fit, use a clearly labeled recording of the first denial and perform the second run live; do not present a recording as live.
 
 ### The story
 
@@ -54,17 +56,14 @@ Tracks we are entering: **Primitive** (agents with email identities that ask, re
 
 | Time | What happens on screen | What to do | What to say |
 |---|---|---|---|
-| 0:00 | Claude Code | Paste prompt A (below). The agent runs the test: **red, 401 Unauthorized**. | "Yunha's checkout broke overnight. Acme changed something, and the only person who knows is asleep in Seoul." |
-| 0:20 | Agent calls `request_context`, gets `pending`, keeps working. Dashboard: new request, tracker at **Asked**, then **Received** | Point at the tracker | "No Slack, no ticket. Yunha's agent asks Acme's agent directly, and doesn't wait." |
-| 0:35 | Tracker moves into **Approval**. TK's phone buzzes | Show the phone | "Acme's agent searched TK's session and Claude drafted an answer. But look at the exact words." |
-| 0:50 | The email's **Exact answer** contains TK's `curl` line with the raw admin key | Zoom on the key | "Acme's internal key, about to go to another company." |
-| 1:00 | TK taps **Deny**, types "contains our internal key", taps Send. Tracker: **Delivered (denied)** | | "The human gate caught it. Nothing left Acme. But a person shouldn't have to catch this every time." |
-| 1:15 | Rules page | Switch on **API keys**. In **Try it**, paste the `curl` line: the key becomes `[secret]` | "One switch. Now keys never reach the model at all." |
-| 1:35 | Claude Code | Paste prompt B. New request: Asked, Received, Approval | "Same question, second time." |
-| 1:55 | TK's phone: the exact answer now says `Authorization: Bearer <your API key>`, with no key anywhere; the summary reads in plain English | TK taps **Approve**, then Send. Tracker pops: **Delivered (approved)** | "The model never saw the key, so it can't leak it. It just explains what changed." |
-| 2:15 | Claude Code | Paste prompt C. The agent changes one header line, reruns the test: **green** | "Fixed, from someone who's still asleep." |
-| 2:35 | Request page, **Activity log** at the bottom | Scroll to it | "Every step is logged: what was masked, who decided, when." |
-| 2:45 | Close | | "One denial became a permanent rule. The agent got the fix, and nothing private ever left Acme." |
+| 0:00–0:10 | Claude Code | Paste prompt A; show the red 401 test. | "Pinecart’s checkout broke after Acme changed authentication. The fix exists in Acme’s engineer’s session." |
+| 0:10–0:25 | Agent and dashboard | Show `request_context` returning `pending`; show the approval email as it arrives. | "The agent asks Acme through Nanobite and can keep working while the answer is reviewed." |
+| 0:25–0:40 | TK’s phone | Show the fake internal key in the exact draft. Tap Deny, enter the reason, then Send. | "This draft includes an internal key. I deny it; the answer is withheld." |
+| 0:40–0:50 | Rules page | Enable API keys; use the prepared Try it sample. | "This rule masks the demo key before Claude sees the source." |
+| 0:50–1:15 | Claude Code and phone | Paste prompt B. Show the second draft when it arrives. | "Same question. Now Claude receives the useful context with the key removed." |
+| 1:15–1:30 | TK’s phone | Read the clean answer; tap Approve, then Send. | "I approve these exact words." |
+| 1:30–1:50 | Claude Code | Paste prompt C; retrieve the answer, change the header, run the test and report the observed outcome. | "The agent applies the approved fix. Checkout passes." |
+| 1:50–2:00 | Request page | Show the Activity log; finish by 2:00. | "The fix crosses companies. The internal key stays out of the shared answer, and every decision is recorded." |
 
 ### Prompts (paste exactly; keep them in a text file on the laptop)
 
@@ -101,7 +100,7 @@ Work top to bottom. Estimates assume one person; split across the team.
 | 3 | **Built-in "API keys" rule that catches the demo key.** None of today's 11 built-in rules catches `Authorization: Bearer ak_live_…` (checked). Add a built-in regex such as `\bak_(live\|test)_[A-Za-z0-9]{8,}\b` and a "Bearer tokens" rule `Bearer\s+[A-Za-z0-9._~+/-]{12,}`, both with placeholder `[secret]` and a plain name on the Rules page ("API keys"). Also fix the generic key rule, which today turns `ACME_API_KEY=…` into `ACME_[secret]`. | 30 min | Try it masks the curl line to `Bearer [secret]` |
 | 4 | **Sentence rules must match whole words.** Today `CTO` also removes sentences containing "constructor" or "factor", and `pricing` removes "repricing" (checked). Answers about code mention constructors often, so the key sentence could vanish. Match on word boundaries. | 30 min | "client constructor" survives; "Their CTO is furious" is removed |
 | 5 | **Prove Run 1 really leaks, with real Claude and no prompt changes.** With the API keys rule off, run prompt A three times. Never weaken Claude's instructions to force a leak; judges may ask. If Claude leaves the key out, make the leak more natural (the key inside the `curl` example Claude is likely to copy), or switch the leaked item to something Claude does not recognize as secret (an internal database host or a customer email). | 30 min | 3 of 3 runs show the key (or the chosen secret) in the draft |
-| 6 | **Full rehearsal on the real setup**: TK's phone, both runs, real timings. Record the numbers for the pitch. | 30 min | Two clean runs under 3 minutes |
+| 6 | **Full rehearsal on the real setup**: TK's phone, both runs, real timings. Record the numbers for the pitch. | 30 min | Two complete rehearsals at or below 120 seconds each, including both requests and the red-to-green fix |
 
 ### Should have (strong for judging)
 
@@ -126,7 +125,7 @@ Work top to bottom. Estimates assume one person; split across the team.
 
 **Night before**
 - [ ] Section 4 must-haves merged to `main`; `npm test` and `npm run typecheck` pass.
-- [ ] Backup video recorded of the full 3-minute flow, both runs, with TK's phone visible.
+- [ ] Backup video recorded of the full 2-minute flow, both runs, with TK's phone visible.
 - [ ] Pitch deck updated to the new story (section 9).
 - [ ] Name decided (section 8), or keep Nanobite for the demo.
 
