@@ -2,7 +2,7 @@
 
 ContextPR lets a coding agent ask another company's engineering agent for one missing answer. The responder searches a session transcript, removes protected details, drafts a small answer, and presents the exact words for human review. The requester receives only the approved capsule and can report whether it fixed the problem.
 
-Mail runs either through **live Primitive email** (`MAIL_PROVIDER=primitive`, used for the hackathon demo) or a **local inbox** in the dashboard (`MAIL_PROVIDER=local`, no email service). Claude is the selected demo model; Ollama is an optional local alternative. The Acme scenario and Bob transcript are synthetic fixtures.
+Mail runs either through **live Primitive email** (`MAIL_PROVIDER=primitive`, used for the hackathon demo) or a **local inbox** in the dashboard (`MAIL_PROVIDER=local`, no email service). Claude is the selected demo model; Ollama is an optional local alternative. The Acme scenario and TK transcript are synthetic fixtures.
 
 ## Start the demo
 
@@ -20,7 +20,7 @@ npm run seed
 npm start
 ```
 
-Open [the local Inbox](http://127.0.0.1:8787). `seed` loads only the included synthetic Bob transcript and denylist. It does not scan your home directory or automatically ingest real Claude sessions. Submit a question such as:
+Open [the local Inbox](http://127.0.0.1:8787). `seed` loads only the included synthetic TK transcript and denylist. It does not scan your home directory or automatically ingest real Claude sessions. Submit a question such as:
 
 > Why do concurrent retries create duplicate charges in SDK 2.3, and how do I preserve one idempotency key?
 
@@ -35,13 +35,13 @@ Set these in your ignored `.env`. Any local part at your managed subdomain recei
 ```sh
 MAIL_PROVIDER=primitive
 PRIMITIVE_API_KEY=prim_...                                # Primitive dashboard, Settings, API keys
-REQUESTER_IDENTITY=alice-agent@<subdomain>.primitive.email
+REQUESTER_IDENTITY=yunha-agent@<subdomain>.primitive.email
 RESPONDER_IDENTITY=sdk-help@<subdomain>.primitive.email
-APPROVER_EMAIL=<the address Bob reads on his phone>
+APPROVER_EMAIL=<the address TK reads on his phone>
 POLL_WAIT_SECONDS=3
 ```
 
-Then `npm run reset && npm run seed && npm start`. In this mode Bob approves by replying to the approval email with one word: `approve`, `approve always`, `deny <reason>`, or `edit` followed by the full replacement text. The dashboard shows every Context PR but has no approve buttons; the email reply is the decision. Replies from Gmail, Apple Mail, and Outlook, including their quoted original and mobile signatures, are recognized. Any extra words after `approve` are refused rather than guessed.
+Then `npm run reset && npm run seed && npm start`. In this mode TK approves by replying to the approval email with one word: `approve`, `approve always`, `deny <reason>`, or `edit` followed by the full replacement text. The dashboard shows every Context PR but has no approve buttons; the email reply is the decision. Replies from Gmail, Apple Mail, and Outlook, including their quoted original and mobile signatures, are recognized. Any extra words after `approve` are refused rather than guessed.
 
 A new Primitive account sends only to Primitive addresses, members of your organization (the account's own signup email counts), and addresses that have already written to you. Use the account owner's address as `APPROVER_EMAIL`, or have the approver email the responder address once first. A blocked send fails with `recipient_not_allowed`, is recorded as an error event in that request's timeline, and is retried by the worker until the address is allowed.
 
@@ -98,7 +98,7 @@ In another:
 npm run demo:test
 ```
 
-The committed demo test is **intentionally red**: `expected 1 charge, got 2`. This is separate from `npm test`, which should pass. Use the ContextPR request above to obtain a reviewed answer. Then change `demo/alice-app/charge.ts` from:
+The committed demo test is **intentionally red**: `expected 1 charge, got 2`. This is separate from `npm test`, which should pass. Use the ContextPR request above to obtain a reviewed answer. Then change `demo/yunha-app/charge.ts` from:
 
 ```ts
 return withRetry(() => client.charge({ amount: 4200, currency: 'usd', customer: 'cus_123' }));
@@ -130,7 +130,7 @@ ANTHROPIC_API_KEY= MODEL_PROVIDER=ollama npm run benchmark
 
 **Benchmark human actions are simulated.** The harness first proves that absent approval blocks delivery, then submits an explicit simulated approval or full replacement. Timing includes model work and immediate simulated review; it does not measure human response time. Model prompt/output counts, source/capsule counts, and character counts are kept separate.
 
-The saved [benchmark.md](benchmark.md) is a 2026-10-17 run with real `claude-opus-5-5` drafting. All three workflow checks passed, with request-to-capsule observations of about 4 to 8 seconds. Source and capsule token counts come from Anthropic `countTokens`: the synthetic Bob session is 760 tokens and the capsules are 150 to 272 tokens. That 3 to 5 times reduction reflects a deliberately short fixture, not a real debugging session, so do not quote it as typical compression. An earlier local `qwen3:4b` run also passed all three checks; its fix-location answer was incomplete. A workflow pass is not a quality certification.
+The saved [benchmark.md](benchmark.md) is a 2026-10-17 run with real `claude-opus-5-5` drafting. All three workflow checks passed, with request-to-capsule observations of about 4 to 8 seconds. Source and capsule token counts come from Anthropic `countTokens`: the synthetic TK session is 760 tokens and the capsules are 150 to 272 tokens. That 3 to 5 times reduction reflects a deliberately short fixture, not a real debugging session, so do not quote it as typical compression. An earlier local `qwen3:4b` run also passed all three checks; its fix-location answer was incomplete. A workflow pass is not a quality certification.
 
 ## Restart or reset
 
@@ -158,6 +158,6 @@ In a new agent turn, use requests such as `$impeccable polish src/dashboard/rend
 
 - Claude is verified on one laptop: key authentication, the three-question benchmark, and one live rehearsal through the real worker, dashboard, and MCP stdio server, ending red to green on the Acme test. The approval in that rehearsal was clicked by the operator through the dashboard form, not by a second person. Each other laptop needs its own ignored `.env`.
 - Primitive is verified live end to end, including a one-word `Approve` typed by a person in Outlook on a phone from a non-Primitive address (DMARC passed, sender verified). Rehearse once more on the demo phone before going on stage.
-- A second computer, Bob's physical phone, three human rehearsals, a backup video, organizer confirmation, and hackathon submission have not been completed by local software tests. No backup video or phone approval is claimed.
+- A second computer, TK's physical phone, three human rehearsals, a backup video, organizer confirmation, and hackathon submission have not been completed by local software tests. No backup video or phone approval is claimed.
 
 The original [HANDOVER.md](HANDOVER.md) remains unchanged. User-authorized changes and evidence are recorded in [PLAN.md](PLAN.md). The direct Zod dependency is version 4 because MCP server 2.3.1 requires its newer Standard Schema JSON interface; the handover's older Zod version did not type-check with the installed MCP SDK.

@@ -16,7 +16,7 @@ import { initializeCursor } from '../src/pipeline/worker.ts';
 import { sendQueuedRequests, pollDeliveries } from '../src/pipeline/requester.ts';
 import { pollInbound, processReceived, pollApprovals } from '../src/pipeline/responder.ts';
 import { requestContext, getContextRequest } from '../src/mcp/tools.ts';
-const fixture = new URL('../demo/fixtures/bob-session.jsonl', import.meta.url);
+const fixture = new URL('../demo/fixtures/tk-session.jsonl', import.meta.url);
 const rules = new URL('../demo/fixtures/rules.sql', import.meta.url);
 const sourceText = parseTranscript(readFileSync(fixture, 'utf8')).map(turn => turn.text).join('\n');
 const characters = (text: string) => [...text].length;
@@ -201,7 +201,7 @@ export function renderBenchmark(report: BenchmarkReport): string {
         '', `Generated: ${report.generatedAt} (UTC).`,
         '', `Model: **${report.provider} / ${report.model}**. ${report.provider === 'anthropic' ? 'Claude drafting was exercised by this run.' : 'Claude API drafting and Claude token counts remain **unverified**; no Claude key was available for this run.'}`,
         '', `Result: **${report.results.length - failed} passed, ${failed} failed**. Passing means local workflow/gate assertions passed; it is not a general answer-quality evaluation.`,
-        '', 'Provenance: the Bob transcript and Acme scenario are synthetic fixtures. Model responses are generated during this run. Requests, approval messages, and capsules use the SQLite-backed local inbox adapter with disposable `:memory:` databases. No live email or Primitive call occurs.',
+        '', 'Provenance: the TK transcript and Acme scenario are synthetic fixtures. Model responses are generated during this run. Requests, approval messages, and capsules use the SQLite-backed local inbox adapter with disposable `:memory:` databases. No live email or Primitive call occurs.',
         '', '**Every human decision below is SIMULATED by this benchmark.** The harness first verifies that absent approval blocks delivery. It then simulates `approve`, or records a full `edit` replacement that removes sentences containing flagged unreleased information. This is not evidence of a real human review, phone interaction, or human response time.',
         '', 'Request → capsule timing includes real model work and immediate simulated review, but excludes the normal worker polling sleep and token-count API calls. Each question runs once; these are individual observations, not averages or performance guarantees.',
         '', '| Question | Workflow | Extracted source characters | Capsule characters | Source tokens | Capsule tokens | Request → capsule (s) | Simulated reply characters |',

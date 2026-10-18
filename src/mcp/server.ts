@@ -6,7 +6,7 @@ import { requestContext, getContextRequest, reportOutcome, listContextRequests, 
 import type { ToolResult } from './tools.ts';
 const db = openDb(process.env.CONTEXTPR_DB ?? './data/contextpr.db');
 migrate(db);
-const requesterIdentity = process.env.REQUESTER_IDENTITY ?? 'alice-agent@startup.local';
+const requesterIdentity = process.env.REQUESTER_IDENTITY ?? 'yunha-agent@startup.local';
 if (!requesterIdentity)
     throw new Error('Missing REQUESTER_IDENTITY. Configure .env before starting the MCP server.');
 const server = new McpServer({ name: 'contextpr', version: '0.1.0' });

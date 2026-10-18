@@ -24,7 +24,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         throw new Error('Invalid MAIL_PROVIDER: use local or primitive');
     if (model !== 'ollama' && model !== 'anthropic')
         throw new Error('Invalid MODEL_PROVIDER: use ollama or anthropic');
-    const values = { ...env, REQUESTER_IDENTITY: env.REQUESTER_IDENTITY ?? 'alice-agent@startup.local', RESPONDER_IDENTITY: env.RESPONDER_IDENTITY ?? 'sdk-help@acme.local', APPROVER_EMAIL: env.APPROVER_EMAIL ?? 'bob@acme.local' };
+    const values = { ...env, REQUESTER_IDENTITY: env.REQUESTER_IDENTITY ?? 'yunha-agent@startup.local', RESPONDER_IDENTITY: env.RESPONDER_IDENTITY ?? 'sdk-help@acme.local', APPROVER_EMAIL: env.APPROVER_EMAIL ?? 'tk@acme.local' };
     const missing: string[] = [];
     if (mail === 'primitive') {
         for (const key of ['REQUESTER_IDENTITY', 'RESPONDER_IDENTITY', 'APPROVER_EMAIL'])
@@ -55,5 +55,5 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     }
     if (!['http:', 'https:'].includes(url.protocol) || !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) || url.username || url.password)
         throw new Error('OLLAMA_BASE_URL must use a local loopback server');
-    return { MAIL_PROVIDER: mail, MODEL_PROVIDER: model, OLLAMA_BASE_URL: ollama.replace(/\/$/, ''), OLLAMA_MODEL: env.OLLAMA_MODEL ?? '', REQUESTER_IDENTITY: values.REQUESTER_IDENTITY, RESPONDER_IDENTITY: values.RESPONDER_IDENTITY, APPROVER_EMAIL: values.APPROVER_EMAIL, APPROVER_NAME: env.APPROVER_NAME ?? 'Bob', PRIMITIVE_API_KEY: env.PRIMITIVE_API_KEY ?? '', PRIMITIVE_API_KEY_REQUESTER: env.PRIMITIVE_API_KEY_REQUESTER ?? '', PRIMITIVE_API_KEY_RESPONDER: env.PRIMITIVE_API_KEY_RESPONDER ?? '', ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY ?? '', ANTHROPIC_MODEL: env.ANTHROPIC_MODEL ?? 'claude-opus-5-5', CONTEXTPR_DB: env.CONTEXTPR_DB ?? './data/contextpr.db', DASHBOARD_PORT: port, DASHBOARD_PUBLIC_URL: env.DASHBOARD_PUBLIC_URL ?? `http://localhost:${port}`, POLL_WAIT_SECONDS: poll, TRANSCRIPTS_DIR: env.TRANSCRIPTS_DIR ?? './demo/fixtures' };
+    return { MAIL_PROVIDER: mail, MODEL_PROVIDER: model, OLLAMA_BASE_URL: ollama.replace(/\/$/, ''), OLLAMA_MODEL: env.OLLAMA_MODEL ?? '', REQUESTER_IDENTITY: values.REQUESTER_IDENTITY, RESPONDER_IDENTITY: values.RESPONDER_IDENTITY, APPROVER_EMAIL: values.APPROVER_EMAIL, APPROVER_NAME: env.APPROVER_NAME ?? 'TK', PRIMITIVE_API_KEY: env.PRIMITIVE_API_KEY ?? '', PRIMITIVE_API_KEY_REQUESTER: env.PRIMITIVE_API_KEY_REQUESTER ?? '', PRIMITIVE_API_KEY_RESPONDER: env.PRIMITIVE_API_KEY_RESPONDER ?? '', ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY ?? '', ANTHROPIC_MODEL: env.ANTHROPIC_MODEL ?? 'claude-opus-5-5', CONTEXTPR_DB: env.CONTEXTPR_DB ?? './data/contextpr.db', DASHBOARD_PORT: port, DASHBOARD_PUBLIC_URL: env.DASHBOARD_PUBLIC_URL ?? `http://localhost:${port}`, POLL_WAIT_SECONDS: poll, TRANSCRIPTS_DIR: env.TRANSCRIPTS_DIR ?? './demo/fixtures' };
 }

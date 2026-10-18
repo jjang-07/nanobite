@@ -6,7 +6,7 @@ Model: **anthropic / claude-opus-5-5**. Claude drafting was exercised by this ru
 
 Result: **3 passed, 0 failed**. Passing means local workflow/gate assertions passed; it is not a general answer-quality evaluation.
 
-Provenance: the Bob transcript and Acme scenario are synthetic fixtures. Model responses are generated during this run. Requests, approval messages, and capsules use the SQLite-backed local inbox adapter with disposable `:memory:` databases. No live email or Primitive call occurs.
+Provenance: the TK transcript and Acme scenario are synthetic fixtures. Model responses are generated during this run. Requests, approval messages, and capsules use the SQLite-backed local inbox adapter with disposable `:memory:` databases. No live email or Primitive call occurs.
 
 **Every human decision below is SIMULATED by this benchmark.** The harness first verifies that absent approval blocks delivery. It then simulates `approve`, or records a full `edit` replacement that removes sentences containing flagged unreleased information. This is not evidence of a real human review, phone interaction, or human response time.
 
@@ -68,7 +68,7 @@ How should I configure timeoutMs in createClient for the synthetic timeout and r
 
 Status: passed. Rules → minimize → human gate assertions: passed (human action simulated).
 
-SIMULATED decision: approve; 7 typed characters. Model flags: ["/Users/bob/acme/sdk/packages/sdk/src/retry.ts","v2.5"].
+SIMULATED decision: approve; 7 typed characters. Model flags: ["/Users/tk/acme/sdk/packages/sdk/src/retry.ts","v2.5"].
 
 Exact simulated reply:
 

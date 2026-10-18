@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { parseTranscript } from '../src/indexer/transcript.ts';
 import { loadTranscriptFile, searchSources } from '../src/indexer/index.ts';
 import { openDb, migrate } from '../src/db/db.ts';
-const FIX = new URL('../demo/fixtures/bob-session.jsonl', import.meta.url);
+const FIX = new URL('../demo/fixtures/tk-session.jsonl', import.meta.url);
 test('parseTranscript extracts user/assistant/tool turns and never thinking', () => {
     const turns = parseTranscript(readFileSync(FIX, 'utf8'));
     assert.ok(turns.length >= 8);

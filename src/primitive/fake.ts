@@ -16,7 +16,7 @@ export class FakePrimitive implements PrimitiveClient {
         idempotencyKey: string;
         wait?: boolean;
     }) { const inbound = await this.getEmail(id); return this.sendMail({ from: inbound.toEmail, to: inbound.fromEmail, subject: `Re: ${inbound.subject ?? ''}`, inReplyTo: id, ...i }); }
-    deliverReply(id: string, r: Partial<ReplyEmail>) { const sent = this.sent[Number(id.split('_')[1]) - 1]; this.replies.set(id, { id: `reply_${id}`, threadId: `thread_${id}`, replyToSentEmailId: id, fromEmail: sent?.to ?? 'bob@example.com', toEmail: sent?.from ?? 'sdk-help@acme.primitive.email', subject: null, bodyText: null, receivedAt: new Date().toISOString(), fyi: false, senderVerified: true, ...r }); }
+    deliverReply(id: string, r: Partial<ReplyEmail>) { const sent = this.sent[Number(id.split('_')[1]) - 1]; this.replies.set(id, { id: `reply_${id}`, threadId: `thread_${id}`, replyToSentEmailId: id, fromEmail: sent?.to ?? 'tk@example.com', toEmail: sent?.from ?? 'sdk-help@acme.primitive.email', subject: null, bodyText: null, receivedAt: new Date().toISOString(), fyi: false, senderVerified: true, ...r }); }
     async awaitReply(id: string, waitMs: number) { this.awaitCalls.push({ id, waitMs }); return this.replies.get(id) ?? null; }
     deliverInbound(d: Partial<InboundDetail> & {
         id: string;

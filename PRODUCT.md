@@ -12,7 +12,7 @@ TypeScript on Node.js 24 or newer, a server-rendered dashboard using `node:http`
 
 ## Users
 
-A requesting engineer or coding agent needs a narrow answer from another team's engineering context. A responding engineer reviews the proposed answer and decides what can be shared. The local demo represents Alice at a startup and Bob at the SDK vendor; these identities are demonstration roles, not separate authenticated tenants.
+A requesting engineer or coding agent needs a narrow answer from another team's engineering context. A responding engineer reviews the proposed answer and decides what can be shared. The local demo represents Yunha at a startup and TK at the SDK vendor; these identities are demonstration roles, not separate authenticated tenants.
 
 ## Product Purpose
 

@@ -6,7 +6,7 @@ const mk = () => { const db = openDb(':memory:'); migrate(db); return db; };
 const input = { responder: 'sdk-help@acme.primitive.email', topic: 'acme-sdk/retries', question: 'Why do concurrent retries create duplicate charges with SDK 2.3?', context: 'test concurrent-retry fails: expected 1 charge, got 2' };
 test('request_context queues a PR and returns pending with next_action', () => {
     const db = mk();
-    const r = requestContext(db, input, { requesterIdentity: 'alice-agent@startup.primitive.email' });
+    const r = requestContext(db, input, { requesterIdentity: 'yunha-agent@startup.primitive.email' });
     assert.equal(r.structured.status, 'pending');
     assert.match(r.structured.id, /^cpr_/);
     assert.match(r.structured.next_action, /get_context_request/);

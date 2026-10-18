@@ -5,7 +5,7 @@ test('migrate creates tables and round-trips a PR', () => {
     const db = openDb(':memory:');
     migrate(db);
     insertPr(db, { id: 'cpr_test1', state: 'queued', requester_identity: 'a@x.primitive.email', responder_identity: 'b@y.primitive.email',
-        topic: 'acme-sdk/retries', question: 'Why do I get duplicate charges on retry?', on_behalf_of: 'Alice', context_hint: null });
+        topic: 'acme-sdk/retries', question: 'Why do I get duplicate charges on retry?', on_behalf_of: 'Yunha', context_hint: null });
     const pr = getPr(db, 'cpr_test1');
     assert.equal(pr?.state, 'queued');
     updatePr(db, 'cpr_test1', { state: 'requested', request_sent_email_id: 'sent_1' });

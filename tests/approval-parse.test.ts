@@ -26,7 +26,7 @@ test('local edits reject only empty or whitespace-only replacements', () => {
         assert.equal(parseDecision(body, { local: true }).decision, 'unrecognized');
 });
 test('approvals and revocations require one complete command with no extra unquoted content', () => {
-    const ambiguous = ['approve but do not send', 'approve always except this topic', 'approved with changes', 'yes if Bob agrees', 'revoke later', 'approve\nDo not include v2.5.', 'approve always\nOnly for today.', 'revoke\nNot yet.', 'approve\napprove', 'edit please\nreplacement'];
+    const ambiguous = ['approve but do not send', 'approve always except this topic', 'approved with changes', 'yes if TK agrees', 'revoke later', 'approve\nDo not include v2.5.', 'approve always\nOnly for today.', 'revoke\nNot yet.', 'approve\napprove', 'edit please\nreplacement'];
     for (const body of ambiguous)
         for (const options of [{}, { local: true }])
             assert.equal(parseDecision(body, options).decision, 'unrecognized', JSON.stringify({ body, options }));

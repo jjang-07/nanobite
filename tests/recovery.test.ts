@@ -20,7 +20,7 @@ function local(path = ':memory:') {
     const db = openDb(path);
     migrate(db);
     const config = loadConfig({});
-    loadTranscriptFile(db, config.RESPONDER_IDENTITY, new URL('../demo/fixtures/bob-session.jsonl', import.meta.url).pathname);
+    loadTranscriptFile(db, config.RESPONDER_IDENTITY, new URL('../demo/fixtures/tk-session.jsonl', import.meta.url).pathname);
     seedRules(db, new URL('../demo/fixtures/rules.sql', import.meta.url).pathname, config.RESPONDER_IDENTITY);
     const deps = { config, drafter: new FakeDrafter(), clientFor: (identity: string) => createLocalClient(db, identity) };
     const request = () => requestContext(db, { responder: config.RESPONDER_IDENTITY, topic: 'acme-sdk/retries', question: 'Why do retries create duplicate charges with SDK 2.3?' }, { requesterIdentity: config.REQUESTER_IDENTITY }).structured.id;

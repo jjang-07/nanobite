@@ -11,7 +11,7 @@
     "test": "node --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "demo:acme": "node demo/acme-sdk/server.ts",
-    "demo:test": "node --test demo/alice-app/concurrent-retry.test.ts",
+    "demo:test": "node --test demo/yunha-app/concurrent-retry.test.ts",
     "smoke:primitive": "node --env-file-if-exists=.env scripts/smoke-primitive.ts",
     "benchmark": "node --env-file-if-exists=.env scripts/benchmark.ts"
   },

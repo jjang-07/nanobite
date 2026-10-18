@@ -4,9 +4,9 @@ PRAGMA busy_timeout=5000;
 CREATE TABLE IF NOT EXISTS context_prs (
   id TEXT PRIMARY KEY,                       -- cpr_<base36 time><4 random>
   state TEXT NOT NULL,                       -- queued|requested|received|drafting|awaiting_approval|approved|denied|delivered|reported|failed
-  requester_identity TEXT NOT NULL,          -- alice-agent@<startup>.primitive.email
+  requester_identity TEXT NOT NULL,          -- yunha-agent@<startup>.primitive.email
   responder_identity TEXT NOT NULL,          -- sdk-help@<acme>.primitive.email
-  on_behalf_of TEXT,                         -- human label, e.g. "Alice (startup)"
+  on_behalf_of TEXT,                         -- human label, e.g. "Yunha (startup)"
   topic TEXT NOT NULL,                       -- kebab tag, e.g. acme-sdk/retries
   question TEXT NOT NULL,
   context_hint TEXT,                         -- failing test name + output excerpt
@@ -14,15 +14,15 @@ CREATE TABLE IF NOT EXISTS context_prs (
   request_inbound_email_id TEXT,             -- Primitive inbound id (responder side)
   request_thread_id TEXT,
   matched_source_ids TEXT,                   -- JSON string[]
-  draft_answer TEXT,                         -- gate 2 output after gate 1 (what Bob sees)
-  draft_flagged TEXT,                        -- JSON string[] phrases the model flagged for Bob
+  draft_answer TEXT,                         -- gate 2 output after gate 1 (what TK sees)
+  draft_flagged TEXT,                        -- JSON string[] phrases the model flagged for TK
   removals TEXT,                             -- JSON Removal[] {placeholder,count}
-  approval_sent_email_id TEXT,               -- email to Bob
+  approval_sent_email_id TEXT,               -- email to TK
   approval_thread_id TEXT,
   decision TEXT,                             -- approve|approve_always|deny|edit|auto
   decision_reason TEXT,
   approved_text TEXT,                        -- the capsule, byte for byte
-  approver TEXT,                             -- Bob's address
+  approver TEXT,                             -- TK's address
   decided_at TEXT,
   capsule_sent_email_id TEXT,                -- reply to the request (responder side)
   capsule_inbound_email_id TEXT,             -- as received on the requester side

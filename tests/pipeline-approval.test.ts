@@ -19,9 +19,9 @@ test('unrecognized reply changes the awaited email to clarification', async () =
 test('two approvals both polled once; unverified replies cannot release', async () => { const { db, mail, deps, id } = await received(); queued(db, 'cpr_test2'); await sendQueuedRequests(db, deps); mail.deliverInbound(incoming('cpr_test2')); await pollInbound(db, deps); await processReceived(db, deps); const a = getPr(db, id)!.approval_sent_email_id!, b = getPr(db, 'cpr_test2')!.approval_sent_email_id!; mail.deliverReply(a, { bodyText: 'approve', senderVerified: false }); await pollApprovals(db, deps); assert.deepEqual(mail.awaitCalls.map(c => c.id).sort(), [a, b].sort()); assert.equal(getPr(db, id)?.state, 'awaiting_approval'); });
 import { trustedReply as trusted } from '../src/pipeline/responder.ts';
 test('trustedReply compares bare addresses case-insensitively, even with display names', () => {
-    const r = { id: 'in_1', threadId: null, replyToSentEmailId: 'sent_1', fromEmail: 'Bob Example <Bob@Example.com>', toEmail: 'sdk-help@acme.primitive.email', subject: null, bodyText: 'approve', receivedAt: null, fyi: false, senderVerified: true };
-    assert.equal(trusted(r, 'sent_1', 'bob@example.com', 'sdk-help@acme.primitive.email'), true);
-    assert.equal(trusted({ ...r, fromEmail: 'Mallory <mallory@evil.example>' }, 'sent_1', 'bob@example.com', 'sdk-help@acme.primitive.email'), false);
-    assert.equal(trusted({ ...r, fromEmail: '"bob@example.com" <mallory@evil.example>' }, 'sent_1', 'bob@example.com', 'sdk-help@acme.primitive.email'), false);
-    assert.equal(trusted({ ...r, senderVerified: false }, 'sent_1', 'bob@example.com', 'sdk-help@acme.primitive.email'), false);
+    const r = { id: 'in_1', threadId: null, replyToSentEmailId: 'sent_1', fromEmail: 'TK Example <TK@Example.com>', toEmail: 'sdk-help@acme.primitive.email', subject: null, bodyText: 'approve', receivedAt: null, fyi: false, senderVerified: true };
+    assert.equal(trusted(r, 'sent_1', 'tk@example.com', 'sdk-help@acme.primitive.email'), true);
+    assert.equal(trusted({ ...r, fromEmail: 'Mallory <mallory@evil.example>' }, 'sent_1', 'tk@example.com', 'sdk-help@acme.primitive.email'), false);
+    assert.equal(trusted({ ...r, fromEmail: '"tk@example.com" <mallory@evil.example>' }, 'sent_1', 'tk@example.com', 'sdk-help@acme.primitive.email'), false);
+    assert.equal(trusted({ ...r, senderVerified: false }, 'sent_1', 'tk@example.com', 'sdk-help@acme.primitive.email'), false);
 });

@@ -7,16 +7,16 @@ import { openDb, migrate } from '../src/db/db.ts';
 import { createLocalClient, listLocalInbox, submitLocalReply } from '../src/primitive/local.ts';
 import { loadConfig } from '../src/config.ts';
 import { clientForIdentity } from '../src/primitive/registry.ts';
-const alice = 'alice@startup.local', acme = 'sdk-help@acme.local', bob = 'bob@acme.local';
-const approval = { from: acme, to: bob, subject: '[ContextPR cpr_test] Approve?', bodyText: 'Exact draft\n  keep spaces', idempotencyKey: 'cpr_test:approval:1' };
+const yunha = 'yunha@startup.local', acme = 'sdk-help@acme.local', tk = 'tk@acme.local';
+const approval = { from: acme, to: tk, subject: '[ContextPR cpr_test] Approve?', bodyText: 'Exact draft\n  keep spaces', idempotencyKey: 'cpr_test:approval:1' };
 test('local mailbox routes requests and replies without network or automatic approval', async () => {
     const db = openDb(':memory:');
     migrate(db);
     try {
-        const a = createLocalClient(db, alice), b = createLocalClient(db, acme);
+        const a = createLocalClient(db, yunha), b = createLocalClient(db, acme);
         const baseline = await b.listInbound(acme, null, 0);
         assert.equal(baseline.nextSince, 'local:0');
-        const sent = await a.sendMail({ from: alice, to: acme, subject: 'question', bodyText: 'question body', idempotencyKey: 'cpr_test:request:1' });
+        const sent = await a.sendMail({ from: yunha, to: acme, subject: 'question', bodyText: 'question body', idempotencyKey: 'cpr_test:request:1' });
         const incoming = await b.listInbound(acme, baseline.nextSince, 0);
         assert.equal(incoming.items.length, 1);
         assert.equal((await b.getEmail(incoming.items[0].id)).bodyText, 'question body');
@@ -43,17 +43,17 @@ test('human replies and duplicate sends survive database restart', async () => {
         let client = createLocalClient(db, acme);
         const sent = await client.sendMail(approval);
         assert.equal((await client.sendMail(approval)).sentEmailId, sent.sentEmailId);
-        let inbox = listLocalInbox(db, bob);
+        let inbox = listLocalInbox(db, tk);
         assert.equal(inbox.length, 1);
         assert.equal(inbox[0].bodyText, approval.bodyText);
         assert.equal(inbox[0].purpose, 'approval');
         assert.equal(inbox[0].reply, null);
-        assert.throws(() => submitLocalReply(db, { sentEmailId: sent.sentEmailId, author: alice, bodyText: 'approve' }), /recipient|author/i);
+        assert.throws(() => submitLocalReply(db, { sentEmailId: sent.sentEmailId, author: yunha, bodyText: 'approve' }), /recipient|author/i);
         const exact = 'edit\nApproved replacement\n  keep indent';
-        const first = submitLocalReply(db, { sentEmailId: sent.sentEmailId, author: bob, bodyText: exact });
-        const duplicate = submitLocalReply(db, { sentEmailId: sent.sentEmailId, author: bob, bodyText: exact });
+        const first = submitLocalReply(db, { sentEmailId: sent.sentEmailId, author: tk, bodyText: exact });
+        const duplicate = submitLocalReply(db, { sentEmailId: sent.sentEmailId, author: tk, bodyText: exact });
         assert.equal(duplicate.sentEmailId, first.sentEmailId);
-        assert.throws(() => submitLocalReply(db, { sentEmailId: sent.sentEmailId, author: bob, bodyText: 'different' }), /idempotency|already/i);
+        assert.throws(() => submitLocalReply(db, { sentEmailId: sent.sentEmailId, author: tk, bodyText: 'different' }), /idempotency|already/i);
         db.close();
         db = openDb(path);
         migrate(db);
@@ -61,10 +61,10 @@ test('human replies and duplicate sends survive database restart', async () => {
         assert.equal((await client.sendMail(approval)).sentEmailId, sent.sentEmailId);
         const reply = await client.awaitReply(sent.sentEmailId, 0);
         assert.equal(reply?.bodyText, exact);
-        assert.equal(reply?.fromEmail, bob);
+        assert.equal(reply?.fromEmail, tk);
         assert.equal(reply?.toEmail, acme);
         assert.equal(reply?.senderVerified, true);
-        inbox = listLocalInbox(db, bob);
+        inbox = listLocalInbox(db, tk);
         assert.equal(inbox.length, 1);
         assert.equal(inbox[0].reply?.bodyText, exact);
     }

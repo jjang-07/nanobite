@@ -15,7 +15,7 @@ test('persistent local transport waits for an explicit human reply then delivers
     const db = openDb(':memory:');
     migrate(db);
     const config = loadConfig({});
-    loadTranscriptFile(db, config.RESPONDER_IDENTITY, new URL('../demo/fixtures/bob-session.jsonl', import.meta.url).pathname);
+    loadTranscriptFile(db, config.RESPONDER_IDENTITY, new URL('../demo/fixtures/tk-session.jsonl', import.meta.url).pathname);
     seedRules(db, new URL('../demo/fixtures/rules.sql', import.meta.url).pathname, config.RESPONDER_IDENTITY);
     const deps = { config, drafter: new FakeDrafter(), clientFor: (identity: string) => clientForIdentity(identity, config, db) };
     await initializeCursor(db, deps);

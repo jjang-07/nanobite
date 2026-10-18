@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { encodeEnvelope, parseEnvelope, prIdFromSubject } from '../src/envelope.ts';
 test('envelope round-trips inside prose', () => {
-    const body = 'Hello Bob,\n\n' + encodeEnvelope('request', { v: 1, id: 'cpr_abc123', topic: 'acme-sdk/retries' }) + '\n\nthanks';
+    const body = 'Hello TK,\n\n' + encodeEnvelope('request', { v: 1, id: 'cpr_abc123', topic: 'acme-sdk/retries' }) + '\n\nthanks';
     const parsed = parseEnvelope(body);
     assert.equal(parsed?.kind, 'request');
     assert.equal(parsed?.payload.id, 'cpr_abc123');
