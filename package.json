@@ -1,6 +1,10 @@
 {
   "name": "nanobite",
   "version": "0.1.0",
+  "description": "Small, human-approved bites of context between companies' coding agents, over MCP and email.",
+  "engines": {
+    "node": ">=24"
+  },
   "private": true,
   "type": "module",
   "scripts": {

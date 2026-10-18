@@ -1,12 +1,72 @@
-# Nanobite
+# nanobite
 
-**Start here:** [DEMO-HANDOVER.md](DEMO-HANDOVER.md) has the **2-minute maximum** final demo script, the decisions behind it, and the code changes and checklist still needed before the demo. [HANDOFF.md](HANDOFF.md) has the current state and how to run it.
+**Small, approved bites of context between companies' coding agents.**
 
-Nanobite lets a coding agent ask another company's engineering agent for one missing answer. The responder searches a session transcript, removes protected details, drafts a small answer, and presents the exact words for human review. The requester receives only the approved capsule and can report whether it fixed the problem.
+Built at YC's *Make Something Agents Want* hackathon (October 17–18, 2026). Tracks: **Primitive** (agents with email identities) and **Manufact** (MCP built for agents as the primary user).
 
-Mail runs either through **live Primitive email** (`MAIL_PROVIDER=primitive`, used for the hackathon demo) or a **local inbox** in the dashboard (`MAIL_PROVIDER=local`, no email service). Claude is the selected demo model; Ollama is an optional local alternative. The Acme scenario and vendor transcript are synthetic fixtures.
+> Demo video: _add link_
 
-## Start the demo
+## The problem
+
+A coding agent gets stuck on something an engineer at another company already solved, in a debugging session that never became documentation. The two companies share no Slack, the engineer may be asleep, and nobody should hand over a whole session to answer one question.
+
+## What nanobite does
+
+The stuck agent asks the other company's agent through one MCP tool, `request_context`. It gets `pending` back immediately and keeps working. On the other side, the answer passes three gates before anything leaves:
+
+1. **Rules.** Deterministic, responder-owned rules mask secrets, customer names, tickets and emails in the source session *before the model sees it*, and run again on the draft as a backstop.
+2. **Minimize.** Claude drafts the smallest answer that unblocks the question, from the cleaned excerpts only, and flags anything sensitive for review.
+3. **Human.** The responder's engineer approves, edits or denies the exact words by replying to an email from their phone. Nothing is sent without that decision, or an explicit, narrowly scoped "approve always" rule.
+
+The asking agent picks up the approved answer (the "capsule") with `get_context_request`, labeled `EXTERNAL_DATA` / `NOT_INSTRUCTIONS`, applies it, and can `report_outcome`.
+
+```
+Requester's agent ──request_context──▶  email  ──▶ Responder's worker
+       ▲                                              │ rules → Claude draft → rules again
+       │                                              ▼
+  get_context_request ◀── capsule email ◀── engineer replies "approve" / "edit …" / "deny …"
+```
+
+## Why it is built this way
+
+- **For agents (Manufact).** Four MCP tools, over stdio or streamable HTTP. Every call returns immediately with `next_action` and, when waiting, `poll_after_seconds`; every error says how to recover. Works with Claude Code, Claude Desktop, Codex and ChatGPT.
+- **On email (Primitive).** Each agent has its own address, so two companies need no shared infrastructure, accounts or context: only email. The human's decision is an email reply, trusted only from the approver's address with Primitive sender verification or a DMARC pass. Idempotency keys make every send safe to retry.
+- **Small bites.** What crosses the boundary is a reviewed answer of a few hundred tokens, not a transcript. In the saved benchmark, a 760-token source session produced capsules of about 200–260 tokens; real sessions are far larger (`npm run stats:sessions`).
+- **It learns.** A denial can become a protection rule on the Rules page, so the next request with the same question is answered safely.
+
+## Quick start (local, no email account needed)
+
+Requires Node 24 or newer.
+
+```sh
+npm ci
+cp .env.example .env        # add ANTHROPIC_API_KEY, keep MAIL_PROVIDER=local
+npm run seed
+npm start                   # dashboard at http://127.0.0.1:8787
+```
+
+Then connect a coding agent (`npm run connect -- claude`) and ask it to request context, or follow [DEMO.md](DEMO.md) for the scripted red-to-green Acme demo. `npm test` and `npm run typecheck` should both pass. Live email through Primitive is described below.
+
+## Team
+
+Aiden Ko, Tony Kim, Yunha Lee, Jun Jang.
+
+## Documentation
+
+| File | What it is |
+|---|---|
+| [DEMO.md](DEMO.md) | Runnable demo: the Acme duplicate-charge flow, local or over live email |
+| [HANDOFF.md](HANDOFF.md) | Current implementation and how to run it |
+| [DESIGN.md](DESIGN.md), [PRODUCT.md](PRODUCT.md) | Interface and product context |
+| [DEMO-HANDOVER.md](DEMO-HANDOVER.md) | The team's stage plan and pre-demo checklist |
+| [HANDOVER.md](HANDOVER.md), [PLAN.md](PLAN.md) | Original specification and build/verification record |
+| [benchmark.md](benchmark.md) | Saved benchmark run |
+
+---
+
+# Reference
+
+### Start the demo
 
 Requires Node 24 or newer. Run from the repository root:
 
@@ -30,7 +90,7 @@ Leave the default responder and topic, then open the request when it needs revie
 
 The dashboard binds to `127.0.0.1` and is intended for **one trusted local operator** demonstrating both companies. It has same-origin form and CSRF checks, but no separate user accounts or multiuser authentication. Do not expose it through a public tunnel or use it as an authenticated team service.
 
-## Use live Primitive email
+### Use live Primitive email
 
 Set these in your ignored `.env`. Any local part at your managed subdomain receives mail without being created first.
 
@@ -49,7 +109,7 @@ Primitive's outbound permissions depend on your account. Before the demo, email 
 
 Verified live on 2026-10-17 with `fair-fly.primitive.email`: request, draft, approval email, approver reply, and capsule round trip in 17 seconds end to end; a delivery check to the account owner's address was accepted with SMTP 250.
 
-## Use Ollama instead
+### Use Ollama instead
 
 Set `MODEL_PROVIDER=ollama` in `.env`, keep `MAIL_PROVIDER=local`, and set `OLLAMA_MODEL` to an already installed local model. Leave the model blank to use the first installed local model returned by Ollama. Start your local Ollama server, then run `npm run seed` and `npm start`.
 
@@ -61,7 +121,7 @@ For a one-off local start without changing the selected demo provider:
 MODEL_PROVIDER=ollama npm start
 ```
 
-## Manage sharing rules
+### Manage sharing rules
 
 Open the dashboard's **Rules** page (`/rules`) to configure the responder shown there.
 
@@ -72,7 +132,7 @@ The two automated checks do different work: protection rules remove specified in
 
 Protection changes apply when new drafts are created. Existing drafts are not rewritten. New approval rules do not automatically decide requests already awaiting review. Rule management is available in both local-inbox and Primitive-email mode on the trusted local dashboard.
 
-## Workflow and approval boundaries
+### Workflow and approval boundaries
 
 1. **Rules:** deterministic, responder-specific patterns mask customer names, tickets, email addresses, secrets, and protected sentences. Thinking blocks are excluded during transcript extraction.
 2. **Minimize:** the selected model drafts from the sanitized excerpts, identifies supporting excerpts, and flags sensitive phrases for review. A model flag is advisory; the model cannot grant approval.
@@ -82,7 +142,7 @@ Protection changes apply when new drafts are created. Existing drafts are not re
 
 Every request has an audit trail: source identifiers, rule removal counts, draft and model flags, human decision, approved text, message identifiers, delivery, and reported outcome. This is a demo disclosure workflow, not a general guarantee that every possible secret pattern or unsupported model answer will be caught. Human review remains meaningful.
 
-## Connect a coding agent
+### Connect a coding agent
 
 The agent is the customer: these four tools are its only interface. The worker does the drafting and email; the MCP server only reads and writes the shared SQLite database, so every call returns immediately. Keep `npm start` running while an agent uses the tools.
 
@@ -112,7 +172,7 @@ Both transports serve one shared tool definition, verified by tests. Claude Code
 
 Before a demo, `npm run preflight` checks keys, the model, the Primitive account, whether the approver can be emailed, seeded data, the HTTP token, and that the demo test starts red, and prints a fix for anything missing.
 
-## Rehearse the red-to-green fix
+### Rehearse the red-to-green fix
 
 The mock Acme server records a charge before delaying its first response. Retrying with a newly generated key creates a second charge. Its data is synthetic and remains local.
 
@@ -142,7 +202,7 @@ return withRetry(() => client.charge({ amount: 4200, currency: 'usd', customer: 
 
 Run `npm run demo:test` again; it should pass with one charge. Report the actual result with `report_outcome`. Restore only that one-line demonstration change afterward so the next rehearsal begins red. The red → green → restored-red sequence was exercised locally; it is not evidence of a real payment integration.
 
-## Verify and benchmark
+### Verify and benchmark
 
 ```sh
 npm test
@@ -162,7 +222,7 @@ ANTHROPIC_API_KEY= MODEL_PROVIDER=ollama npm run benchmark
 
 The saved [benchmark.md](benchmark.md) is a 2026-10-17 run with real `claude-opus-5-5` drafting. All three workflow checks passed, with request-to-capsule observations of about 4 to 7 seconds. Source and capsule token counts come from Anthropic `countTokens`: the synthetic vendor session is 760 tokens and the capsules are about 200 to 260 tokens (about 500 to 660 characters). That small reduction reflects a deliberately short fixture, not a real debugging session. For the pitch, compare against real sessions with `npm run stats:sessions`, in characters. An earlier local `qwen3:4b` run also passed all three checks; its fix-location answer was incomplete. A workflow pass is not a quality certification.
 
-## Restart or reset
+### Restart or reset
 
 Stop the application with Ctrl-C and wait for it to exit before starting it again. One worker owns each persistent database through a PID-and-token lock beside the database. A second worker refuses to start. Only a recognized lock whose process has exited can be reclaimed automatically; an unrecognized or symlink lock is left intact for inspection.
 
@@ -178,16 +238,17 @@ npm start
 
 Reset deletes requests, approvals, grants, local messages, sources, and audit history in the selected database. It uses `CONTEXTPR_DB`, or `./data/contextpr.db` when unset. It removes only that database and its `-wal`/`-shm` sidecars, recreates the schema, and preserves adjacent files. It refuses an active worker, symlinks, non-regular targets, and an existing non-SQLite database file. Reset itself does not need model credentials and makes no model or email call. Also stop any agent work using the database before resetting.
 
-## Impeccable design tools
+### Impeccable design tools
 
 The official [Impeccable](https://impeccable.style/) project skill ([upstream source](https://github.com/pbakaus/impeccable)) is installed locally at [.agents/skills/impeccable/SKILL.md](.agents/skills/impeccable/SKILL.md), with its references and launcher. Its durable product and interface context is in [PRODUCT.md](PRODUCT.md) and [DESIGN.md](DESIGN.md). It is design tooling for future changes, not a browser dependency or an application service.
 
 In a new agent turn, use requests such as `$impeccable polish src/dashboard/render.ts` or `$impeccable audit src/dashboard/render.ts`; the skill supplies the corresponding playbook. The installed launcher supports project context and a manual detector. This project uses manual checks, not automatic edit hooks. The launcher may need its version-pinned binary on first use; that does not enable a paid model provider or install a browser overlay in the dashboard.
 
-## What remains unverified
+### Verification status
 
-- Claude is verified on one laptop: key authentication, the three-question benchmark, and one live rehearsal through the real worker, dashboard, and MCP stdio server, ending red to green on the Acme test. The approval in that rehearsal was clicked by the operator through the dashboard form, not by a second person. Each other laptop needs its own ignored `.env`.
-- Primitive is verified live end to end, including a one-word `Approve` typed by a person in Outlook on a phone from a non-Primitive address (DMARC passed, sender verified). Rehearse once more on the demo phone before going on stage.
-- A second computer, a physical phone, three human rehearsals, a backup video, organizer confirmation, and hackathon submission have not been completed by local software tests. No backup video or phone approval is claimed.
+- Claude drafting is verified live (`claude-opus-5-5`), including the three-question benchmark and a full rehearsal through the worker, dashboard and MCP, ending red to green on the Acme test.
+- Primitive email is verified live end to end: request, draft, approval email, a human reply from a phone (sender verified, DMARC pass), and capsule delivery.
+- The Acme scenario, vendor transcript and demo keys are synthetic. Tests use fake transports and simulated decisions; they are not evidence of live email or real human approval.
+- Known limits: one local worker plays both companies (in production each runs its own); the dashboard has no login and binds to `127.0.0.1`; only one worker may read a given responder address.
 
 The original [HANDOVER.md](HANDOVER.md) remains unchanged. User-authorized changes and evidence are recorded in [PLAN.md](PLAN.md). The direct Zod dependency is version 4 because MCP server 2.3.1 requires its newer Standard Schema JSON interface; the handover's older Zod version did not type-check with the installed MCP SDK.
