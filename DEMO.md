@@ -1,4 +1,4 @@
-# ContextPR demo (local server, 3 minutes)
+# Nanobite demo (local server, 3 minutes)
 
 **Cast.** Yunha: startup engineer, laptop with Claude Code. TK: Acme engineer, phone with the inbox set as `APPROVER_EMAIL` in `.env`.
 
@@ -13,7 +13,7 @@
    Preflight must end with `Ready for the demo.`
 3. Terminal 2: `npm run demo:acme`
 4. Browser: http://127.0.0.1:8787
-5. Terminal 3, in the repo: `claude --allowedTools "Bash(npm run demo:test)" "mcp__contextpr" "Read" "Edit"`. Answer any MCP prompt now, not on stage.
+5. Terminal 3, in the repo: `claude --allowedTools "Bash(npm run demo:test)" "mcp__nanobite" "Read" "Edit"`. Answer any MCP prompt now, not on stage.
 
 ## On stage
 
@@ -29,7 +29,7 @@
 
    Green, 1 charge.
 6. **Browser:** refresh the Inbox and open the request. Show what was masked, TK's decision, and the outcome `passed`.
-7. **Close:** "A typical session on our laptops is 52,000 characters. What left Acme was 500, and a human read every word. Connected agents decide what to share. ContextPR lets the human decide, with one tap."
+7. **Close:** "A typical session on our laptops is 52,000 characters. What left Acme was 500, and a human read every word. Connected agents decide what to share. Nanobite lets the human decide, with one tap."
 
 ## If something breaks
 

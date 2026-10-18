@@ -1,4 +1,6 @@
-const OPEN = '--- contextpr-json ---';
+const OPEN = '--- nanobite-json ---';
+/** Messages sent before the rename to Nanobite still parse. */
+const OPENERS = [OPEN, '--- contextpr-json ---'];
 const CLOSE = '--- end ---';
 export function encodeEnvelope(kind: string, payload: Record<string, unknown>): string {
     return `${OPEN}\n${JSON.stringify({ ...payload, kind })}\n${CLOSE}`;
@@ -10,7 +12,7 @@ export function parseEnvelope(body: string | null): {
     if (!body)
         return null;
     const lines = body.replace(/\r\n/g, '\n').split('\n');
-    const start = lines.findIndex(line => line === OPEN || line === `> ${OPEN}` || line === `>${OPEN}`);
+    const start = lines.findIndex(line => OPENERS.some(open => line === open || line === `> ${open}` || line === `>${open}`));
     if (start < 0)
         return null;
     const quoted = lines[start].startsWith('>');
@@ -30,6 +32,6 @@ export function parseEnvelope(body: string | null): {
     }
 }
 export function prIdFromSubject(subject: string | null): string | null {
-    const m = subject?.match(/\[ContextPR (cpr_[a-z0-9]+)\]/);
+    const m = subject?.match(/\[(?:Nanobite|ContextPR) (cpr_[a-z0-9]+)\]/);
     return m ? m[1] : null;
 }

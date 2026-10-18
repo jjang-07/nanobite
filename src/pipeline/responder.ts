@@ -101,7 +101,7 @@ export async function sendFinalized(db: DatabaseSync, deps: Deps, p: PrRow) {
     const decision = p.decision === 'auto' ? 'auto_merged' : p.decision === 'edit' ? 'edited' : 'approved';
     const envelope = denied ? encodeEnvelope('denial', { v: 1, id: p.id, reason: p.decision_reason ?? 'Declined by approver', suggestion: 'Narrow the question, include the failing test and SDK version, or ask a different responder.' }) : encodeEnvelope('capsule', { v: 1, id: p.id, text: p.approved_text, decision, approved_at: p.decided_at, gates: { rules_removals: (JSON.parse(p.removals ?? '[]') as Removal[]).reduce((n, r) => n + r.count, 0), minimized: true, human: decision } });
     const purpose = denied ? 'denial' : 'capsule';
-    const r = await deps.clientFor(p.responder_identity).replyToEmail(p.request_inbound_email_id, { bodyText: `Context PR ${p.id}: ${denied ? 'denied' : 'approved answer'}\n\n${envelope}`, idempotencyKey: `${p.id}:${purpose}:1` });
+    const r = await deps.clientFor(p.responder_identity).replyToEmail(p.request_inbound_email_id, { bodyText: `Nanobite request ${p.id}: ${denied ? 'denied' : 'approved answer'}\n\n${envelope}`, idempotencyKey: `${p.id}:${purpose}:1` });
     assertSendAccepted(r);
     recordSent(db, r.sentEmailId, p.id, purpose, p.responder_identity, 1);
     updatePr(db, p.id, { capsule_sent_email_id: r.sentEmailId });

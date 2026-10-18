@@ -1,4 +1,4 @@
-// Connect a coding agent to ContextPR, in either client and over either transport.
+// Connect a coding agent to Nanobite, in either client and over either transport.
 //   npm run connect -- claude [http|stdio]   registers the server with Claude Code for this folder
 //   npm run connect -- codex  [http|stdio]   prints the block to paste into ~/.codex/config.toml
 //   npm run connect -- remove                removes the Claude Code registration for this folder
@@ -19,7 +19,7 @@ export interface Setup {
     toml?: string;
     notes: string[];
 }
-const NAME = 'contextpr';
+const NAME = 'nanobite';
 export function agentSetup(client: Client, transport: Transport, env: SetupEnv): Setup {
     const url = `http://127.0.0.1:${env.port}/mcp`, envFile = `${env.root}/.env`, server = `${env.root}/src/mcp/server.ts`;
     if (transport === 'http' && env.token.length < 16)
@@ -33,7 +33,7 @@ export function agentSetup(client: Client, transport: Transport, env: SetupEnv):
     const toml = transport === 'http'
         ? `[mcp_servers.${NAME}]\nurl = "${url}"\nbearer_token_env_var = "CONTEXTPR_MCP_TOKEN"\n`
         : `[mcp_servers.${NAME}]\ncommand = "node"\nargs = ["--env-file-if-exists=${envFile}", "${server}"]\ncwd = "${env.root}"\nstartup_timeout_sec = 20\ntool_timeout_sec = 60\n`;
-    return { commands: [], toml, notes: ['Paste this into ~/.codex/config.toml, replacing any earlier [mcp_servers.contextpr] block.', ...(transport === 'http' ? ['Before starting Codex: export CONTEXTPR_MCP_TOKEN=<MCP_HTTP_TOKEN from .env>'] : []), 'Keep `npm start` running.'] };
+    return { commands: [], toml, notes: ['Paste this into ~/.codex/config.toml, replacing any earlier [mcp_servers.nanobite] block.', ...(transport === 'http' ? ['Before starting Codex: export CONTEXTPR_MCP_TOKEN=<MCP_HTTP_TOKEN from .env>'] : []), 'Keep `npm start` running.'] };
 }
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     const [first = 'claude', second = 'http'] = process.argv.slice(2);

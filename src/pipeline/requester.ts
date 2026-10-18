@@ -19,12 +19,12 @@ export function recordError(db: DatabaseSync, id: string, e: unknown) {
     if (last?.kind === 'error' && JSON.parse(String(last.detail ?? '{}'))?.message === message)
         return;
     addEvent(db, id, 'error', { message });
-    console.error(`ContextPR ${id}: ${message}`);
+    console.error(`Nanobite ${id}: ${message}`);
 }
 export async function sendQueuedRequests(db: DatabaseSync, deps: Deps) {
     for (const p of listPrs(db, { state: 'queued' })) {
         try {
-            const r = await deps.clientFor(p.requester_identity).sendMail({ from: p.requester_identity, to: p.responder_identity, subject: `[ContextPR ${p.id}] ${p.topic}`, bodyText: `From ${p.requester_identity}, for ${p.on_behalf_of ?? 'an engineer'}\nTopic: ${p.topic}\n${p.question}\n${p.context_hint ?? ''}\n\n` + encodeEnvelope('request', { v: 1, id: p.id, topic: p.topic, question: p.question, context: p.context_hint, requester_identity: p.requester_identity, on_behalf_of: p.on_behalf_of }), idempotencyKey: `${p.id}:request:1` });
+            const r = await deps.clientFor(p.requester_identity).sendMail({ from: p.requester_identity, to: p.responder_identity, subject: `[Nanobite ${p.id}] ${p.topic}`, bodyText: `From ${p.requester_identity}, for ${p.on_behalf_of ?? 'an engineer'}\nTopic: ${p.topic}\n${p.question}\n${p.context_hint ?? ''}\n\n` + encodeEnvelope('request', { v: 1, id: p.id, topic: p.topic, question: p.question, context: p.context_hint, requester_identity: p.requester_identity, on_behalf_of: p.on_behalf_of }), idempotencyKey: `${p.id}:request:1` });
             assertSendAccepted(r);
             recordSent(db, r.sentEmailId, p.id, 'request', p.requester_identity);
             updatePr(db, p.id, { state: 'requested', request_sent_email_id: r.sentEmailId });

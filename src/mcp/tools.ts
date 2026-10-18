@@ -40,7 +40,7 @@ export function getContextRequest(db: DatabaseSync, { id }: {
         return bad;
     const p = getPr(db, id);
     if (!p)
-        return error(`No Context PR with id ${id}. Call list_context_requests to recover ids.`);
+        return error(`No Nanobite request with id ${id}. Call list_context_requests to recover ids.`);
     const r: Record<string, any> = { id, status: p.state, topic: p.topic, question: p.question, created_at: p.created_at, updated_at: p.updated_at };
     if (p.state === 'delivered' || p.state === 'reported') {
         const decision = p.decision === 'auto' ? 'auto_merged' : p.decision === 'edit' ? 'edited' : 'approved';
@@ -74,7 +74,7 @@ export function reportOutcome(db: DatabaseSync, i: {
         return bad;
     const existing = getPr(db, i.id);
     if (!existing)
-        return error(`No Context PR with id ${i.id}. Call list_context_requests to recover ids.`);
+        return error(`No Nanobite request with id ${i.id}. Call list_context_requests to recover ids.`);
     if (!['delivered', 'reported'].includes(existing.state))
         return error('This request has no delivered capsule. Call get_context_request before report_outcome.');
     if (existing.state === 'reported' && existing.outcome_result === i.result && existing.outcome_note === (i.note ?? null))

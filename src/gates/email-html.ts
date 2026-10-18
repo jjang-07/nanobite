@@ -32,7 +32,7 @@ export function approvalEmailHtml(p: PrRow, config: Pick<Config, 'APPROVER_NAME'
         row('Built from', esc(`${sessions || 0} ${sessions === 1 ? 'session' : 'sessions'}, ${sources.length} ${sources.length === 1 ? 'excerpt' : 'excerpts'}. Nothing else is sent.`)),
         row('Requested by', `${esc(p.requester_identity)}<br><span style="color:${C.muted}">for ${esc(p.on_behalf_of ?? 'an engineer')}</span>`),
         row('Topic', tag(p.topic)),
-        row('Request', `<span style="font-size:13px;color:${C.muted}">${esc(p.id)}</span>${publicUrl ? ` · <a href="${esc(publicUrl)}" style="color:${C.text}">Open in ContextPR</a>` : ''}`),
+        row('Request', `<span style="font-size:13px;color:${C.muted}">${esc(p.id)}</span>${publicUrl ? ` · <a href="${esc(publicUrl)}" style="color:${C.text}">Open in Nanobite</a>` : ''}`),
     ].join('');
     const preheader = `${approver}, approve this answer for ${requester}? Reply approve, edit, or deny.`;
     return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light"><title>Approve this answer</title></head>
@@ -41,7 +41,7 @@ export function approvalEmailHtml(p: PrRow, config: Pick<Config, 'APPROVER_NAME'
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff"><tr><td align="center" style="padding:28px 20px 40px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;font-family:${FONT};color:${C.text}">
 <tr><td style="padding:0 0 16px;border-bottom:1px solid ${C.line}"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-<td style="font-size:20px;font-weight:650;letter-spacing:-0.03em;color:${C.text}">ContextPR</td>
+<td style="font-size:20px;font-weight:650;letter-spacing:-0.03em;color:${C.text}">Nanobite</td>
 <td align="right" style="font-size:13px;font-weight:600;color:${C.state}">Ready for your review</td></tr></table></td></tr>
 <tr><td style="padding:26px 0 0">
 <h1 style="margin:0 0 10px;font-size:24px;line-height:1.25;font-weight:600;letter-spacing:-0.02em;color:${C.text}">Approve this answer for ${esc(requester)}?</h1>
@@ -66,6 +66,6 @@ ${reply('edit', 'Put your full replacement text on the lines below. Only your te
 </table>
 </td></tr>
 <tr><td style="padding:28px 0 0;border-bottom:1px solid ${C.line}"></td></tr>
-<tr><td style="padding:16px 0 0;font-size:12px;line-height:1.6;color:${C.muted};word-break:break-word;overflow-wrap:anywhere">Sent by the ContextPR agent at ${esc(p.responder_identity)}. Rules and minimization ran before this email; your reply is the last gate. Nothing leaves without it.</td></tr>
+<tr><td style="padding:16px 0 0;font-size:12px;line-height:1.6;color:${C.muted};word-break:break-word;overflow-wrap:anywhere">Sent by the Nanobite agent at ${esc(p.responder_identity)}. Rules and minimization ran before this email; your reply is the last gate. Nothing leaves without it.</td></tr>
 </table></td></tr></table></body></html>`;
 }

@@ -197,7 +197,7 @@ const seconds = (value: number | null) => value === null ? 'N/A' : (value / 1000
 export function renderBenchmark(report: BenchmarkReport): string {
     const failed = report.results.filter(result => result.status === 'failed').length;
     const lines = [
-        '# ContextPR benchmark',
+        '# Nanobite benchmark',
         '', `Generated: ${report.generatedAt} (UTC).`,
         '', `Model: **${report.provider} / ${report.model}**. ${report.provider === 'anthropic' ? 'Claude drafting was exercised by this run.' : 'Claude API drafting and Claude token counts remain **unverified**; no Claude key was available for this run.'}`,
         '', `Result: **${report.results.length - failed} passed, ${failed} failed**. Passing means local workflow/gate assertions passed; it is not a general answer-quality evaluation.`,

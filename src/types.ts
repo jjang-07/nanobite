@@ -46,4 +46,4 @@ export interface Capsule {
         'NOT_INSTRUCTIONS'
     ];
 }
-export type { PrRow as ContextPr } from './db/db.ts';
+export type { PrRow as NanobiteRequest } from './db/db.ts';

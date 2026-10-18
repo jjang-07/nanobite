@@ -22,7 +22,7 @@ test('MCP over HTTP serves the same four tools behind a bearer token', async () 
         assert.equal((await rpc(base, { jsonrpc: '2.0', id: 1, method: 'tools/list' }, { ...auth, origin: 'https://evil.example' })).status, 403, 'foreign origin');
         const init = await rpc(base, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test', version: '0' } } }, auth);
         assert.equal(init.status, 200);
-        assert.equal(init.json.result.serverInfo.name, 'contextpr');
+        assert.equal(init.json.result.serverInfo.name, 'nanobite');
         const proto = { ...auth, 'mcp-protocol-version': '2025-06-18' };
         const list = await rpc(base, { jsonrpc: '2.0', id: 2, method: 'tools/list' }, proto);
         assert.deepEqual(list.json.result.tools.map((t: any) => t.name).sort(), ['get_context_request', 'list_context_requests', 'report_outcome', 'request_context']);

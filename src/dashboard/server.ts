@@ -53,7 +53,7 @@ export async function startDashboard(db: DatabaseSync, port: number, options: {
                 const match = url.pathname.match(/^\/pr\/(cpr_[a-z0-9]+)(\/live)?$/);
                 const p = match ? getPr(db, match[1]) : null;
                 if (!p) {
-                    send(404, 'Context PR not found. Return to / for the Inbox.');
+                    send(404, 'Nanobite request not found. Return to / for the Inbox.');
                     return;
                 }
                 const ids = new Set(db.prepare('SELECT sent_email_id FROM sent_emails WHERE pr_id=?').all(p.id).map(r => r.sent_email_id));

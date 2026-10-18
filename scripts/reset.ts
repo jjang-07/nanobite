@@ -58,7 +58,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     try {
         const path = process.env.CONTEXTPR_DB ?? './data/contextpr.db';
         resetDatabase(path);
-        console.log(`Reset local ContextPR data at ${resolve(path)}. Run npm run seed to reload the synthetic fixture.`);
+        console.log(`Reset local Nanobite data at ${resolve(path)}. Run npm run seed to reload the synthetic fixture.`);
     }
     catch (error) {
         console.error(error instanceof Error ? error.message : 'Reset failed');

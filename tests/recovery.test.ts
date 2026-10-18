@@ -27,7 +27,7 @@ function local(path = ':memory:') {
     return { db, deps, config, request };
 }
 test('approved exact bytes survive a failed capsule send and database restart', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'contextpr-restart-'));
+    const dir = mkdtempSync(join(tmpdir(), 'nanobite-restart-'));
     const path = join(dir, 'test.db');
     let s = local(path);
     try {
@@ -151,7 +151,7 @@ test('clarification bookkeeping interruption reuses the sent message and its rep
     db.close();
 });
 test('requested row is still polled after reopening its durable database', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'contextpr-requested-'));
+    const dir = mkdtempSync(join(tmpdir(), 'nanobite-requested-'));
     const path = join(dir, 'test.db');
     let s = local(path);
     try {

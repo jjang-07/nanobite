@@ -1,8 +1,8 @@
-# ContextPR — Full Handover: Spec and Implementation Plan
+# Nanobite — Full Handover: Spec and Implementation Plan
 
 > **For agentic workers (Codex, Claude Code):** Read this entire file before touching code. Part 1 is the spec and the reasoning. Part 2 is the technical design. Part 3 is the task list; execute it in order, one task at a time, test first, commit after every task. Steps use checkbox (`- [ ]`) syntax for tracking. Do not add scope that is not in this file. When this file and your instinct disagree, this file wins.
 
-**Goal:** Build and demo ContextPR: a coding agent at one company asks a coding agent at another company for missing context, and the answer ships only after three gates pass, the last of which is a human approving the exact words by email reply.
+**Goal:** Build and demo Nanobite: a coding agent at one company asks a coding agent at another company for missing context, and the answer ships only after three gates pass, the last of which is a human approving the exact words by email reply.
 
 **Architecture:** One Node process runs an MCP server (what Yunha's coding agent calls), a Primitive email client (how the two companies' agents and the human talk), a transcript indexer plus drafting pipeline (how TK's agent answers), a three-gate disclosure pipeline, a SQLite store, and a one-page dashboard. For the demo both company identities run in the same process and are told apart by email address. In production each company runs its own node and they share nothing but email.
 
@@ -75,7 +75,7 @@ A startup's coding agent hits a bug mid-session and asks the vendor's agent. The
 - **Yunha** is an engineer at a startup, working in **Codex**. Yunha is integrating **Acme Payments**. Yunha's concurrent-retry test produces a duplicate charge.
 - **TK** is a solutions engineer at **Acme Payments**, working in **Claude Code**. Two weeks ago TK debugged this exact bug for another customer, Northwind, in their own session: the Acme SDK's retry wrapper regenerates the idempotency key on retry in v2.3. It was never written into the docs. It exists only in TK's transcript.
 - Today, Yunha would file a support ticket and get a doc link tomorrow.
-- With ContextPR: Yunha's agent calls `request_context`. ContextPR emails Acme's SDK-help agent, which is a Primitive address. Acme's side indexes TK's transcripts, finds the session, drafts a minimal answer, strips Northwind's name and the ticket number (gate 1), keeps only what answers the question (gate 2), and emails TK the exact draft (gate 3). TK's phone buzzes. TK deletes one line about unreleased v2.5 and replies `approve`. The capsule is emailed back to Yunha's agent identity, ContextPR stores it, Yunha's agent picks it up on its next `get_context_request`, applies it, and the test goes green. TK spent one click. Yunha's agent never sat idle: `request_context` returned `pending` and it worked on other tasks meanwhile.
+- With Nanobite: Yunha's agent calls `request_context`. Nanobite emails Acme's SDK-help agent, which is a Primitive address. Acme's side indexes TK's transcripts, finds the session, drafts a minimal answer, strips Northwind's name and the ticket number (gate 1), keeps only what answers the question (gate 2), and emails TK the exact draft (gate 3). TK's phone buzzes. TK deletes one line about unreleased v2.5 and replies `approve`. The capsule is emailed back to Yunha's agent identity, Nanobite stores it, Yunha's agent picks it up on its next `get_context_request`, applies it, and the test goes green. TK spent one click. Yunha's agent never sat idle: `request_context` returned `pending` and it worked on other tasks meanwhile.
 
 ### The three gates, in order
 
@@ -85,13 +85,13 @@ A startup's coding agent hits a bug mid-session and asks the vendor's agent. The
 
 Each gate covers the failure mode of the one before it. Rules catch what is deterministic before TK sees anything. Minimization shrinks what TK has to read. TK catches judgment, like an unreleased version number that no regex knows is sensitive.
 
-### The Context PR as an object
+### The Nanobite request as an object
 
-Every request is a **Context PR**: who asked, on whose behalf, what question, which sources matched, what the draft was, what the rules removed, what TK changed, what was approved, when it was delivered, and whether it fixed the test. It is reviewable, auditable, and lives in the dashboard **Inbox**. The email thread ID is the PR ID. Both companies already archive email, so the audit trail exists in a system they both trust for free.
+Every request is a **Nanobite request**: who asked, on whose behalf, what question, which sources matched, what the draft was, what the rules removed, what TK changed, what was approved, when it was delivered, and whether it fixed the test. It is reviewable, auditable, and lives in the dashboard **Inbox**. The email thread ID is the PR ID. Both companies already archive email, so the audit trail exists in a system they both trust for free.
 
 ### "Approve always" is auto-merge, not access control
 
-After TK approves a topic once or twice, TK can reply `approve always`. That creates a **rule** scoped to exactly one requester identity and one topic tag. Future Context PRs matching that rule skip gate 3, ship immediately, and TK gets a **notification email** carrying the full payload and the instruction "reply `revoke` to delete this rule." Every capsule is still a Context PR in the Inbox. TK still sees every word that left, just after the fact for topics TK trusts. There are no roles, no view/comment/edit levels, no delegation, no wildcards, no team-wide grants.
+After TK approves a topic once or twice, TK can reply `approve always`. That creates a **rule** scoped to exactly one requester identity and one topic tag. Future Nanobite requests matching that rule skip gate 3, ship immediately, and TK gets a **notification email** carrying the full payload and the instruction "reply `revoke` to delete this rule." Every capsule is still a Nanobite request in the Inbox. TK still sees every word that left, just after the fact for topics TK trusts. There are no roles, no view/comment/edit levels, no delegation, no wildcards, no team-wide grants.
 
 ### Non-blocking is the heart of it
 
@@ -99,7 +99,7 @@ After TK approves a topic once or twice, TK can reply `approve always`. That cre
 
 ## 3. Why this, and the answers to "why not X"
 
-- **Why not a support ticket or Slack?** A ticket is a day and returns a doc link. Slack is ten minutes of TK writing. ContextPR is one tap, and the answer arrives as a tested fix inside the agent's session.
+- **Why not a support ticket or Slack?** A ticket is a day and returns a doc link. Slack is ten minutes of TK writing. Nanobite is one tap, and the answer arrives as a tested fix inside the agent's session.
 - **Why not just connect the two agents and let them talk?** Why not just push to main. Git works without pull requests. PRs exist because humans want to see what lands and want a record. Also: TK's agent cannot decide what to share, because the policy is in TK's head. The transcript says "Northwind" but nothing in it says Northwind is confidential. An LLM deciding alone will over-share or under-share, and across companies one wrong guess is an incident.
 - **Isn't human approval a bottleneck?** The requesting agent gets `pending` and keeps working. TK taps once from a phone. The second time on the same topic, `approve always` makes it zero. The bottleneck was never TK existing; it was TK writing and Yunha relaying. Both are gone.
 - **Why cross-company and not teammates?** Inside one team there is no hard boundary: shared workspaces work, Slack works, so exact-payload approval is merely nicer. Approval becomes necessary only where the alternatives are impossible, and that is a company boundary. Email is also the only identity two companies share: no shared Slack, repo, or identity provider.
@@ -111,11 +111,11 @@ After TK approves a topic once or twice, TK can reply `approve always`. That cre
 ### Two analogies, use both
 
 - **Pull request:** approve the exact diff, not grant access. Rules are the CI checks, minimization is a small diff, TK is the reviewer, `approve always` is auto-merge on a protected path.
-- **Clean room:** data clean rooms let two companies compute over shared data without exposing it. ContextPR does that for the knowledge in an engineer's head, and a human still reads every answer that leaves.
+- **Clean room:** data clean rooms let two companies compute over shared data without exposing it. Nanobite does that for the knowledge in an engineer's head, and a human still reads every answer that leaves.
 
 ## 4. Competitive landscape and exact answers
 
-Each layer of ContextPR exists somewhere. The stack, between two companies' agents, over email, with a human approving the exact words, was not found in any search. **Never say "nobody does this."** Say: "We could not find one, and the closest neighbors each lack one layer."
+Each layer of Nanobite exists somewhere. The stack, between two companies' agents, over email, with a human approving the exact words, was not found in any search. **Never say "nobody does this."** Say: "We could not find one, and the closest neighbors each lack one layer."
 
 | Neighbor | What it does | What it lacks |
 |---|---|---|
@@ -138,8 +138,8 @@ If a judge asks about any of these, answer in one sentence from the right-hand c
 
 | Term | Meaning |
 |---|---|
-| **ContextPR** | The product. One word. |
-| **Context PR** | One request object, from ask to outcome. Two words. |
+| **Nanobite** | The product. One word. |
+| **Nanobite request** | One request object, from ask to outcome. Two words. |
 | **capsule** | The approved payload that ships to the requester. |
 | **the three gates** | rules, minimize, human. Always in that order, always these words. |
 | **Inbox** | The one dashboard view. |
@@ -161,11 +161,11 @@ If a judge asks about any of these, answer in one sentence from the right-hand c
 
 **Optional if there is time:** Yunha's agent asks a second question on the same topic. TK already replied `approve always`. It auto-merges while TK is "in a meeting" and TK's phone gets the notification with the payload.
 
-**Stage line:** "Connected agents decide what to share. ContextPR lets the human decide, with one click instead of a written answer."
+**Stage line:** "Connected agents decide what to share. Nanobite lets the human decide, with one click instead of a written answer."
 
 ## 7. Pitch, tagline, and judge Q&A
 
-**Pitch (three sentences):** Your coding agent is stuck on a duplicate-charge bug that your payment vendor's engineer already fixed for another customer, in a session that never became docs. ContextPR lets your agent ask the vendor's agent for exactly what it is missing, and the answer ships only after their engineer approves the exact words in an email reply. A typical session on our laptops holds 52,000 characters; the answer that ships is about 500, and a human read every one of them.
+**Pitch (three sentences):** Your coding agent is stuck on a duplicate-charge bug that your payment vendor's engineer already fixed for another customer, in a session that never became docs. Nanobite lets your agent ask the vendor's agent for exactly what it is missing, and the answer ships only after their engineer approves the exact words in an email reply. A typical session on our laptops holds 52,000 characters; the answer that ships is about 500, and a human read every one of them.
 
 **Closer:** Clean rooms did this for data. We do it for the knowledge in an engineer's head.
 
@@ -239,7 +239,7 @@ Everything in this part was checked against live documentation on October 17, 20
  └────────────────────────┼─┘                    └────────────┬───────────────┘
                           │                                   │ copied fixture for the demo
                           ▼                                   ▼
-            ┌───────────────────────────── ContextPR node (one process for the demo) ─────────────────────────────┐
+            ┌───────────────────────────── Nanobite node (one process for the demo) ─────────────────────────────┐
             │  src/mcp/server.ts        writes/reads SQLite only (no network)                                     │
             │  src/main.ts              worker loop + dashboard                                                   │
             │    requester side:  queued ──send request email──▶ awaiting capsule ──await reply──▶ delivered      │
@@ -272,7 +272,7 @@ goat-yc-hackathon/
   data/                      contextpr.db (gitignored)
   src/
     config.ts                env loading, identities, constants
-    types.ts                 shared types (ContextPr, Capsule, Draft, Excerpt, Removal, PrState, Decision)
+    types.ts                 shared types (NanobiteRequest, Capsule, Draft, Excerpt, Removal, PrState, Decision)
     ids.ts                   newPrId(), nowIso()
     envelope.ts              encodeEnvelope / parseEnvelope / prIdFromSubject
     db/schema.sql            all tables
@@ -409,7 +409,7 @@ CREATE TABLE IF NOT EXISTS events (               -- audit timeline for the dash
 CREATE INDEX IF NOT EXISTS events_pr ON events(pr_id, id);
 ```
 
-## 14. Context PR lifecycle
+## 14. Nanobite request lifecycle
 
 ```
 queued ──(worker sends request email)──▶ requested ──(responder sees inbound)──▶ received
@@ -432,7 +432,7 @@ import { McpServer } from '@modelcontextprotocol/server';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import * as z from 'zod/v4';
 
-const server = new McpServer({ name: 'contextpr', version: '0.1.0' });
+const server = new McpServer({ name: 'nanobite', version: '0.1.0' });
 server.registerTool('name', { title, description, inputSchema: z.object({...}), outputSchema: z.object({...}), annotations: { readOnlyHint, destructiveHint, idempotentHint } },
   async (args) => ({ content: [{ type: 'text', text: JSON.stringify(result) }], structuredContent: result }));
 const transport = new StdioServerTransport();
@@ -474,7 +474,7 @@ output: { id, status, topic, question, created_at, updated_at,
 - denied: "Do not resend the same question. Either narrow it (one bug, one version, include the error) or ask a different responder. Reason: <reason>."
 - reported: "Nothing further to do for this request."
 - failed: "This request failed on our side: <error>. Create a new request_context; this id is dead."
-Unknown id: `isError` with text "No Context PR with id <id>. Call list_context_requests to recover ids."
+Unknown id: `isError` with text "No Nanobite request with id <id>. Call list_context_requests to recover ids."
 
 **`report_outcome`** (idempotentHint true)
 ```ts
@@ -540,11 +540,11 @@ Machine-readable payloads ride in a fenced block at the end of the plain-text bo
 {"v":1,"kind":"request","id":"cpr_m2k9a1x7", ...}
 --- end ---
 ```
-`encodeEnvelope(kind, payload)` returns that block. `parseEnvelope(bodyText)` finds the first block, `JSON.parse`s it, and returns `{ kind, payload }` or `null`. `prIdFromSubject(subject)` matches `/\[ContextPR (cpr_[a-z0-9]+)\]/`.
+`encodeEnvelope(kind, payload)` returns that block. `parseEnvelope(bodyText)` finds the first block, `JSON.parse`s it, and returns `{ kind, payload }` or `null`. `prIdFromSubject(subject)` matches `/\[Nanobite (cpr_[a-z0-9]+)\]/`.
 
-**Request** (requester identity → responder identity). Subject `[ContextPR cpr_…] <topic>`. Body: a short human summary (from agent, on behalf of, topic, question, context) then the envelope with `{ v, kind:"request", id, topic, question, context, requester_identity, on_behalf_of }`.
+**Request** (requester identity → responder identity). Subject `[Nanobite cpr_…] <topic>`. Body: a short human summary (from agent, on behalf of, topic, question, context) then the envelope with `{ v, kind:"request", id, topic, question, context, requester_identity, on_behalf_of }`.
 
-**Approval** (responder identity → `APPROVER_EMAIL`). Subject `[ContextPR cpr_…] Approve answer to <requester_identity>? (<topic>)`. Body, exactly this shape:
+**Approval** (responder identity → `APPROVER_EMAIL`). Subject `[Nanobite cpr_…] Approve answer to <requester_identity>? (<topic>)`. Body, exactly this shape:
 
 ```
 A coding agent at <requester_identity> (for <on_behalf_of>) asked your agent:
@@ -565,12 +565,12 @@ Reply with ONE of:
   deny <reason>
   edit                then paste the full replacement text below it
 
-Context PR: <DASHBOARD_PUBLIC_URL>/pr/cpr_…
+Nanobite request: <DASHBOARD_PUBLIC_URL>/pr/cpr_…
 ```
 
 **Capsule** (responder replies to the inbound request email). Human line plus envelope `{ v, kind:"capsule", id, text, decision, approved_at, gates: { rules_removals, minimized: true, human } }`.
 **Denial**: envelope `{ v, kind:"denial", id, reason, suggestion }`.
-**Notification** (auto-merge): Subject `[ContextPR cpr_…] Auto-sent under your rule (<topic>) — reply "revoke" to stop`. Body: the full capsule text, the rule, and the one-line instruction.
+**Notification** (auto-merge): Subject `[Nanobite cpr_…] Auto-sent under your rule (<topic>) — reply "revoke" to stop`. Body: the full capsule text, the rule, and the one-line instruction.
 **Clarification** (unrecognized reply): "I could not read that reply. Reply with exactly one of: approve, approve always, deny <reason>, edit." The worker then awaits the reply to this new send instead.
 
 ### Reply parser (`parseDecision`)
@@ -674,7 +674,7 @@ Do not pass `thinking` (always on for this model), do not force `tool_choice`, d
 ## 23. Dashboard (`src/dashboard/*`)
 
 `node:http` on `DASHBOARD_PORT` (8787). Two routes.
-- `GET /` **Inbox**: all Context PRs newest first. Columns: id, state, requester, responder, topic, decision, removals, outcome, updated. Each id links to its page. `<meta http-equiv="refresh" content="5">`.
+- `GET /` **Inbox**: all Nanobite requests newest first. Columns: id, state, requester, responder, topic, decision, removals, outcome, updated. Each id links to its page. `<meta http-equiv="refresh" content="5">`.
 - `GET /pr/:id`: question and context; matched source ids; draft as TK saw it; removals; model flags; decision, approver, decided_at; approved text with removed lines marked (simple line diff versus the draft); email ids and thread ids; the events timeline; outcome.
 
 Design rules (non-negotiable, this is the team lead's taste): text-led, one typeface (system stack), eyebrow labels in small letter-spaced caps, tight table alignment, hairline rules, white background, near-black text, one accent color used only for state. No cards, no icons, no shadows, no gradients, no emoji.
@@ -690,7 +690,7 @@ Design rules (non-negotiable, this is the team lead's taste): text-led, one type
 
 **Yunha on Codex** (`~/.codex/config.toml`, keys verified against the Codex config reference; `default_tools_approval_mode` exists in the reference, **verify** the installed version accepts it and remove the line if not):
 ```toml
-[mcp_servers.contextpr]
+[mcp_servers.nanobite]
 command = "node"
 args = ["--env-file=/ABS/PATH/goat-yc-hackathon/.env", "/ABS/PATH/goat-yc-hackathon/src/mcp/server.ts"]
 cwd = "/ABS/PATH/goat-yc-hackathon"
@@ -702,7 +702,7 @@ Install Codex: `npm install -g @openai/codex` (**verify** package name on the in
 
 **TK on Claude Code** (`.mcp.json` in the repo root; TK's side only needs this for testing, since TK approves by email):
 ```json
-{ "mcpServers": { "contextpr": { "type": "stdio", "command": "node", "args": ["--env-file=.env", "src/mcp/server.ts"] } } }
+{ "mcpServers": { "nanobite": { "type": "stdio", "command": "node", "args": ["--env-file=.env", "src/mcp/server.ts"] } } }
 ```
 
 ## 26. Benchmark (`scripts/benchmark.ts`)
@@ -745,7 +745,7 @@ TRANSCRIPTS_DIR=./demo/fixtures
 Inputs the spec implies but a first implementation tends to miss. Each has a pinned test in the owning task.
 
 1. TK's reply arrives wrapped in Gmail quoting (`On … wrote:`, `>` lines) and a mobile signature. `parseDecision` must still return `approve`. (Task 6)
-2. Two Context PRs await approval at the same time. `pollApprovals` must round-robin with short waits so neither starves. (Task 7)
+2. Two Nanobite requests await approval at the same time. `pollApprovals` must round-robin with short waits so neither starves. (Task 7)
 3. The same inbound email appears twice (overlapping long-polls or a restart). No duplicate PR, no double send. (Task 5)
 4. No sources match the question. The requester gets a `denied` with reason `no_sources` and a suggestion, never an eternal `pending`. (Task 10)
 5. A rule placeholder lands inside the one-line fix. The fix line must survive gate 1 intact; the test asserts the capsule still contains `preserveIdempotencyKey`. (Task 9)
@@ -767,7 +767,7 @@ Expected: `v24.x` or newer. If older, stop and install Node 24 before anything e
 - [ ] **Step 2: Write `package.json`**
 ```json
 {
-  "name": "contextpr", "version": "0.1.0", "private": true, "type": "module",
+  "name": "nanobite", "version": "0.1.0", "private": true, "type": "module",
   "scripts": {
     "start": "node --env-file=.env src/main.ts",
     "mcp": "node --env-file=.env src/mcp/server.ts",
@@ -830,7 +830,7 @@ Run: `npm test` → Expected: PASS (2 tests). Run `npm run typecheck` → no err
 
 - [ ] **Step 7: Commit**
 ```bash
-git add -A && git commit -m "chore: scaffold contextpr (node 24, type stripping, node:test)"
+git add -A && git commit -m "chore: scaffold nanobite (node 24, type stripping, node:test)"
 ```
 
 ### Task 1: Database
@@ -888,7 +888,7 @@ test('parseEnvelope returns null without a block or with broken json', () => {
   assert.equal(parseEnvelope(null), null);
 });
 test('prIdFromSubject', () => {
-  assert.equal(prIdFromSubject('Re: [ContextPR cpr_m2k9a1x7] acme-sdk/retries'), 'cpr_m2k9a1x7');
+  assert.equal(prIdFromSubject('Re: [Nanobite cpr_m2k9a1x7] acme-sdk/retries'), 'cpr_m2k9a1x7');
   assert.equal(prIdFromSubject('hello'), null);
 });
 ```
@@ -908,7 +908,7 @@ export function parseEnvelope(body: string | null): { kind: string; payload: any
   try { const payload = JSON.parse(raw); return { kind: String(payload.kind), payload }; } catch { return null; }
 }
 export function prIdFromSubject(subject: string | null): string | null {
-  const m = subject?.match(/\[ContextPR (cpr_[a-z0-9]+)\]/); return m ? m[1] : null;
+  const m = subject?.match(/\[Nanobite (cpr_[a-z0-9]+)\]/); return m ? m[1] : null;
 }
 ```
 Run → PASS. Commit: `git commit -am "feat: shared types and email envelopes"` (after `git add -A`).
@@ -962,7 +962,7 @@ test('listInbound builds the long-poll query and computes nextSince', async () =
   const client = createPrimitiveClient('prim_test', stubFetch((url) => {
     assert.match(url, /\/emails\?/); assert.match(url, /recipient=sdk-help%40y\.primitive\.email/); assert.match(url, /since=2026/); assert.match(url, /wait=20/);
     return { status: 200, body: { success: true, meta: { total: 1, limit: 50, cursor: null },
-      data: [{ id: 'in_1', thread_id: 't', sender: 'a@x.primitive.email', recipient: 'sdk-help@y.primitive.email', subject: '[ContextPR cpr_1] acme-sdk/retries', received_at: '2026-10-17T19:00:00Z', snippet: 'q', fyi: false, automated: false }] } };
+      data: [{ id: 'in_1', thread_id: 't', sender: 'a@x.primitive.email', recipient: 'sdk-help@y.primitive.email', subject: '[Nanobite cpr_1] acme-sdk/retries', received_at: '2026-10-17T19:00:00Z', snippet: 'q', fyi: false, automated: false }] } };
   }));
   const r = await client.listInbound('sdk-help@y.primitive.email', '2026-10-17T18:00:00Z|00000000-0000-0000-0000-000000000000', 20);
   assert.equal(r.items[0].id, 'in_1'); assert.equal(r.nextSince, '2026-10-17T19:00:00Z|in_1');
@@ -1051,7 +1051,7 @@ Run → `npm test` PASS. Manual check: `echo '{"jsonrpc":"2.0","id":1,"method":"
 **Produces:** `createRequest`, `sendQueuedRequests(db, deps)`, `pollInbound(db, deps)`, `handleInboundRequest(db, deps, detail)`; `deps = { clientFor: (identity) => PrimitiveClient; config; drafter?: Drafter; now?: () => string }`.
 
 - [ ] **Step 1: Failing tests**
-Using `FakePrimitive`: (a) a `queued` PR becomes `requested` with `request_sent_email_id` after `sendQueuedRequests`, the sent email is from `REQUESTER_IDENTITY` to `RESPONDER_IDENTITY`, subject starts `[ContextPR cpr_`, body parses as a `request` envelope, idempotency key is `${id}:request:1`. (b) `deliverInbound` of that email on the responder identity then `pollInbound` → PR `received`, `request_inbound_email_id` set, `inbound_seen` has the id. (c) Delivering the **same** inbound again and polling again changes nothing and sends nothing (review focus 3). (d) An inbound whose envelope names an unknown PR id creates the PR from the payload (two-node behavior).
+Using `FakePrimitive`: (a) a `queued` PR becomes `requested` with `request_sent_email_id` after `sendQueuedRequests`, the sent email is from `REQUESTER_IDENTITY` to `RESPONDER_IDENTITY`, subject starts `[Nanobite cpr_`, body parses as a `request` envelope, idempotency key is `${id}:request:1`. (b) `deliverInbound` of that email on the responder identity then `pollInbound` → PR `received`, `request_inbound_email_id` set, `inbound_seen` has the id. (c) Delivering the **same** inbound again and polling again changes nothing and sends nothing (review focus 3). (d) An inbound whose envelope names an unknown PR id creates the PR from the payload (two-node behavior).
 Run → FAIL.
 
 - [ ] **Step 2: Implement** per sections 14, 16, 17. `pollInbound`: read cursor for the responder identity, `listInbound(identity, since, POLL_WAIT_SECONDS)`, for each item not in `inbound_seen`: insert into `inbound_seen`, `getEmail`, `parseEnvelope`; if kind `request` → `handleInboundRequest`; else ignore (replies to approvals are handled by await-reply, not here). Save `nextSince`.
@@ -1241,7 +1241,7 @@ Run → FAIL. Implement per section 21. Run → PASS.
 
 - [ ] **Step 1: Failing test**: `renderInbox([pr])` contains the id, state, topic, and a link `/pr/<id>`; `renderPr(pr, events)` contains the question, the draft, each removal placeholder with its count, the approved text, and each event kind; neither output contains `<img`, `<svg`, or `box-shadow`.
 - [ ] **Step 2: Implement** per section 23 with a single inline `<style>` block (system font stack, `letter-spacing: .08em; text-transform: uppercase; font-size: 11px` eyebrows, `border-top: 1px solid #e5e5e5` rows, accent only on the state cell). `startDashboard(db, port)` with `node:http`; `main.ts` starts it after the worker. Run → PASS; open `http://localhost:8787` during a real loop.
-- [ ] **Step 3: Commit** `git add -A && git commit -m "feat(dashboard): Inbox and Context PR detail pages"`
+- [ ] **Step 3: Commit** `git add -A && git commit -m "feat(dashboard): Inbox and Nanobite request detail pages"`
 
 ### Task 14: Demo: mock Acme SDK, Yunha's test, vendor configs
 

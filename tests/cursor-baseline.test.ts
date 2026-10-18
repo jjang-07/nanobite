@@ -13,7 +13,7 @@ test('a worker started on an existing inbox never replays the newest old request
     mail.listInbound = async (_recipient, since) => ({ items: [old], nextSince: since ?? `${old.receivedAt}|${old.id}` });
     await initializeCursor(db, deps);
     await pollInbound(db, deps);
-    assert.equal(listPrs(db).length, 0, 'an email that predates this worker must not become a Context PR');
+    assert.equal(listPrs(db).length, 0, 'an email that predates this worker must not become a Nanobite request');
     assert.equal(mail.sent.length, 0, 'no approval email may be sent for a replayed request');
     assert.ok(db.prepare('SELECT 1 FROM inbound_seen WHERE email_id=? AND identity=?').get('in_cpr_oldrun', config.RESPONDER_IDENTITY));
 });

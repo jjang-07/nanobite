@@ -1,5 +1,5 @@
 ---
-name: ContextPR
+name: Nanobite
 description: A focused engineering context review interface.
 colors:
   background: "#ffffff"
@@ -81,11 +81,11 @@ components:
     padding: "11px 12px"
 ---
 
-# ContextPR design system
+# Nanobite design system
 
 ## Overview
 
-ContextPR is a focused working interface for engineering questions and human review. Its incumbent visual identity is plain, precise, and restrained: white space, strong text hierarchy, and horizontal rules organize the work. This document records the implemented interface in `src/dashboard/render.ts`; it does not introduce a separate brand concept.
+Nanobite is a focused working interface for engineering questions and human review. Its incumbent visual identity is plain, precise, and restrained: white space, strong text hierarchy, and horizontal rules organize the work. This document records the implemented interface in `src/dashboard/render.ts`; it does not introduce a separate brand concept.
 
 The question, current state, exact answer, and next action take precedence over request IDs and transport details. Technical evidence remains available through native disclosures.
 
@@ -121,7 +121,7 @@ Controls have square corners and a clear one-pixel boundary. Use simple rectangu
 
 ## Components
 
-- **Header:** ContextPR links to the inbox. The configured mail mode and model provider stay visible without displaying secrets.
+- **Header:** Nanobite links to the inbox. The configured mail mode and model provider stay visible without displaying secrets.
 - **Inbox:** Show useful questions rather than a list dominated by identifiers. An empty inbox explains the first request and offers a direct path to the form. A caption gives actual request and pending-review counts.
 - **State:** Pair a textual state with a plain-language explanation. Accent color never carries meaning alone.
 - **Review:** The draft remains selectable and preserves its exact text. Approve draft is the immediate action. Editing, scoped future approval, and denial use clearly named disclosures. Their submit values remain distinct.

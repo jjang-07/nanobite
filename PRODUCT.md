@@ -1,4 +1,4 @@
-# ContextPR
+# Nanobite
 
 <!-- impeccable:product-schema 1 -->
 
@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-TypeScript on Node.js 24 or newer, a server-rendered dashboard using `node:http`, durable SQLite storage, and an MCP server over stdio. The dashboard uses HTML, CSS, and a small amount of plain JavaScript; it has no UI framework. The repository is named Nanobite; the product shown to users is ContextPR.
+TypeScript on Node.js 24 or newer, a server-rendered dashboard using `node:http`, durable SQLite storage, and an MCP server over stdio. The dashboard uses HTML, CSS, and a small amount of plain JavaScript; it has no UI framework. The repository is named Nanobite; the product shown to users is Nanobite.
 
 ## Users
 
@@ -20,13 +20,13 @@ Turn one missing piece of engineering context into an explicit request, a minimi
 
 ## Positioning
 
-“Pull the missing context, not the whole workspace.” The unit of exchange is a focused answer with source references and an approval record. ContextPR is not a general workspace browser or a transcript-sharing interface.
+“Pull the missing context, not the whole workspace.” The unit of exchange is a focused answer with source references and an approval record. Nanobite is not a general workspace browser or a transcript-sharing interface.
 
 ## Operating Context
 
 The current demonstration uses a local durable inbox and a browser dashboard. Local messages stay in SQLite rather than being sent as real email. A model provider is selected in configuration: Claude is the user's chosen demo provider when configured, and local Ollama is available. Primitive email remains an explicit optional integration. Display the configured transport and model in the interface; do not imply that all providers were exercised in a given run.
 
-The dashboard is served on loopback. A requester can create a Context PR in the local dashboard or through MCP. A responder can approve, edit, deny, or establish a scoped approval rule through the local review controls. The demo source material is a synthetic engineering session.
+The dashboard is served on loopback. A requester can create a Nanobite request in the local dashboard or through MCP. A responder can approve, edit, deny, or establish a scoped approval rule through the local review controls. The demo source material is a synthetic engineering session.
 
 ## Capabilities and Constraints
 

@@ -5,7 +5,7 @@ import { Readable } from 'node:stream';
 import { timingSafeEqual, createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import { createMcpHandler } from '@modelcontextprotocol/server';
-import { createContextPrMcpServer } from './register.ts';
+import { createNanobiteMcpServer } from './register.ts';
 export interface McpHttpOptions {
     port: number;
     token: string;
@@ -29,7 +29,7 @@ export async function startMcpHttp(db: DatabaseSync, options: McpHttpOptions): P
     if (options.token.length < 16)
         throw new Error('MCP_HTTP_TOKEN must be at least 16 characters');
     const expected = digest(options.token);
-    const handler = createMcpHandler(() => createContextPrMcpServer(db, options.requesterIdentity));
+    const handler = createMcpHandler(() => createNanobiteMcpServer(db, options.requesterIdentity));
     const host = options.host ?? '127.0.0.1';
     const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
         try {

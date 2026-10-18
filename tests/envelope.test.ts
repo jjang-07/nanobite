@@ -13,7 +13,7 @@ test('parseEnvelope returns null without a block or with broken json', () => {
     assert.equal(parseEnvelope(null), null);
 });
 test('prIdFromSubject', () => {
-    assert.equal(prIdFromSubject('Re: [ContextPR cpr_m2k9a1x7] acme-sdk/retries'), 'cpr_m2k9a1x7');
+    assert.equal(prIdFromSubject('Re: [Nanobite cpr_m2k9a1x7] acme-sdk/retries'), 'cpr_m2k9a1x7');
     assert.equal(prIdFromSubject('hello'), null);
 });
 test('delimiter words inside JSON strings remain payload data', () => {
@@ -30,4 +30,11 @@ test('only complete delimiter lines frame an envelope', () => {
 test('whole-line email quoting and CRLF still preserve valid envelopes', () => {
     const body = encodeEnvelope('capsule', { v: 1, id: 'cpr_quote', text: 'Example --- end --- remains data.' }).split('\n').map(line => '> ' + line).join('\r\n');
     assert.equal(parseEnvelope(body)?.payload.text, 'Example --- end --- remains data.');
+});
+test('messages from before the rename to Nanobite still parse', () => {
+    const old = '--- contextpr-json ---\n{"v":1,"kind":"capsule","id":"cpr_old1","text":"x"}\n--- end ---';
+    assert.equal(parseEnvelope(old)?.payload.id, 'cpr_old1');
+    assert.equal(prIdFromSubject('Re: [ContextPR cpr_old1] acme-sdk/retries'), 'cpr_old1');
+    assert.equal(prIdFromSubject('Re: [Nanobite cpr_new1] acme-sdk/retries'), 'cpr_new1');
+    assert.match(encodeEnvelope('request', { v: 1, id: 'cpr_new1' }), /^--- nanobite-json ---/);
 });

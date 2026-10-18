@@ -30,7 +30,7 @@ test('dashboard request and explicit human decision enforce origin, CSRF and mes
         assert.equal(listPrs(db).length, 1);
         const id = listPrs(db)[0].id;
         db.prepare("UPDATE context_prs SET state='awaiting_approval',draft_answer='EXACT DRAFT' WHERE id=?").run(id);
-        const sent = await createLocalClient(db, config.RESPONDER_IDENTITY).sendMail({ from: config.RESPONDER_IDENTITY, to: config.APPROVER_EMAIL, subject: `[ContextPR ${id}] approval`, bodyText: 'EXACT DRAFT', idempotencyKey: `${id}:approval:1` });
+        const sent = await createLocalClient(db, config.RESPONDER_IDENTITY).sendMail({ from: config.RESPONDER_IDENTITY, to: config.APPROVER_EMAIL, subject: `[Nanobite ${id}] approval`, bodyText: 'EXACT DRAFT', idempotencyKey: `${id}:approval:1` });
         recordSent(db, sent.sentEmailId, id, 'approval', config.RESPONDER_IDENTITY);
         db.prepare('UPDATE context_prs SET approval_sent_email_id=? WHERE id=?').run(sent.sentEmailId, id);
         const action = new URLSearchParams({ csrf, sent_id: sent.sentEmailId, action: 'edit', replacement: 'Exact replacement\n  indent' });

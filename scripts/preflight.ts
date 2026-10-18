@@ -76,8 +76,8 @@ async function main() {
     worker ? ok(`Worker running, Inbox at http://127.0.0.1:${config.DASHBOARD_PORT}`) : info('Worker not running yet: npm start');
     const acme = await fetch('http://127.0.0.1:8791/v1/charges', { signal: AbortSignal.timeout(2000) }).then(r => r.ok, () => false);
     acme ? ok('Mock Acme API running on :8791') : info('Mock Acme API not running yet: npm run demo:acme');
-    const claude = spawnSync('claude', ['mcp', 'get', 'contextpr'], { cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8' });
-    claude.status === 0 ? ok('Claude Code has contextpr registered for this folder') : info('Claude Code not connected here: npm run connect -- claude');
+    const claude = spawnSync('claude', ['mcp', 'get', 'nanobite'], { cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8' });
+    claude.status === 0 ? ok('Claude Code has nanobite registered for this folder') : info('Claude Code not connected here: npm run connect -- claude');
     console.log(failed ? `\n${failed} problem(s) to fix before the demo.` : '\nReady for the demo.');
     process.exit(failed ? 1 : 0);
 }

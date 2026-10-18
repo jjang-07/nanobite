@@ -23,13 +23,13 @@ try {
     const database = db;
     const drafter = config.MODEL_PROVIDER === 'anthropic' ? new AnthropicDrafter({ apiKey: config.ANTHROPIC_API_KEY, model: config.ANTHROPIC_MODEL }) : new OllamaDrafter({ baseUrl: config.OLLAMA_BASE_URL, model: config.OLLAMA_MODEL });
     dashboard = await startDashboard(database, config.DASHBOARD_PORT, { config });
-    console.error(`ContextPR local Inbox: http://127.0.0.1:${config.DASHBOARD_PORT} (mail=${config.MAIL_PROVIDER}, model=${config.MODEL_PROVIDER})`);
+    console.error(`Nanobite local Inbox: http://127.0.0.1:${config.DASHBOARD_PORT} (mail=${config.MAIL_PROVIDER}, model=${config.MODEL_PROVIDER})`);
     if (config.MCP_HTTP_TOKEN) {
         mcpHttp = await startMcpHttp(database, { port: config.MCP_HTTP_PORT, token: config.MCP_HTTP_TOKEN, requesterIdentity: config.REQUESTER_IDENTITY, allowedHosts: config.MCP_HTTP_ALLOWED_HOSTS });
-        console.error(`ContextPR MCP over HTTP: http://127.0.0.1:${config.MCP_HTTP_PORT}/mcp (bearer token required)`);
+        console.error(`Nanobite MCP over HTTP: http://127.0.0.1:${config.MCP_HTTP_PORT}/mcp (bearer token required)`);
     }
     else
-        console.error('ContextPR MCP over HTTP: disabled (set MCP_HTTP_TOKEN to enable); stdio MCP is available via npm run mcp');
+        console.error('Nanobite MCP over HTTP: disabled (set MCP_HTTP_TOKEN to enable); stdio MCP is available via npm run mcp');
     await runWorker({ db: database, config, drafter, clientFor: identity => clientForIdentity(identity, config, database), signal: abort.signal });
 }
 finally {

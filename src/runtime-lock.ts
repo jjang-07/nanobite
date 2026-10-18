@@ -70,7 +70,7 @@ function alive(pid: number): boolean {
     }
 }
 function running(pid: number): Error {
-    return new Error(`A ContextPR worker is already running for this database (PID ${pid}). Stop that worker before starting another worker or resetting its data.`);
+    return new Error(`A Nanobite worker is already running for this database (PID ${pid}). Stop that worker before starting another worker or resetting its data.`);
 }
 function removeMatching(path: string, database: string, expected: ExistingLock): boolean {
     const current = readLock(path, database);

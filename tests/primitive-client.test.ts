@@ -44,7 +44,7 @@ test('listInbound builds the long-poll query and computes nextSince', async () =
         assert.match(url, /since=2026/);
         assert.match(url, /wait=20/);
         return { status: 200, body: { success: true, meta: { total: 1, limit: 50, cursor: null },
-                data: [{ id: 'in_1', thread_id: 't', sender: 'a@x.primitive.email', recipient: 'sdk-help@y.primitive.email', subject: '[ContextPR cpr_1] acme-sdk/retries', received_at: '2026-10-17T19:00:00Z', snippet: 'q', fyi: false, automated: false }] } };
+                data: [{ id: 'in_1', thread_id: 't', sender: 'a@x.primitive.email', recipient: 'sdk-help@y.primitive.email', subject: '[Nanobite cpr_1] acme-sdk/retries', received_at: '2026-10-17T19:00:00Z', snippet: 'q', fyi: false, automated: false }] } };
     }));
     const r = await client.listInbound('sdk-help@y.primitive.email', '2026-10-17T18:00:00Z|00000000-0000-0000-0000-000000000000', 20);
     assert.equal(r.items[0].id, 'in_1');
@@ -94,7 +94,7 @@ test('a hung Primitive call is abandoned shortly after its own wait, not after a
 });
 test('reply senders with a display name map to the bare address (Outlook reply, verified live 2026-10-17)', async () => {
     const client = createPrimitiveClient('prim_test', stubFetch(() => ({ status: 200, body: { success: true, data: { sent_email_id: 'sent_1', waited: true, timed_out: false,
-        reply: { id: 'in_9', thread_id: 't1', reply_to_sent_email_id: 'sent_1', from_email: 'TK Example <TK.Example@Stanford.edu>', to_email: 'ContextPR <sdk-help@y.primitive.email>', subject: 'Re: x', body_text: 'Approve', body_html: null, received_at: '2026-10-17T23:53:09Z', status: 'received', sender_verified: true, sender_matches_recipient: true, fyi: false, auth: {} } } } })));
+        reply: { id: 'in_9', thread_id: 't1', reply_to_sent_email_id: 'sent_1', from_email: 'TK Example <TK.Example@Stanford.edu>', to_email: 'Nanobite <sdk-help@y.primitive.email>', subject: 'Re: x', body_text: 'Approve', body_html: null, received_at: '2026-10-17T23:53:09Z', status: 'received', sender_verified: true, sender_matches_recipient: true, fyi: false, auth: {} } } } })));
     const r = await client.awaitReply('sent_1', 5000);
     assert.equal(r?.fromEmail, 'TK.Example@Stanford.edu');
     assert.equal(r?.toEmail, 'sdk-help@y.primitive.email');

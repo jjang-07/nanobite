@@ -8,7 +8,7 @@ import { createLocalClient, listLocalInbox, submitLocalReply } from '../src/prim
 import { loadConfig } from '../src/config.ts';
 import { clientForIdentity } from '../src/primitive/registry.ts';
 const yunha = 'yunha@startup.local', acme = 'sdk-help@acme.local', tk = 'tk@acme.local';
-const approval = { from: acme, to: tk, subject: '[ContextPR cpr_test] Approve?', bodyText: 'Exact draft\n  keep spaces', idempotencyKey: 'cpr_test:approval:1' };
+const approval = { from: acme, to: tk, subject: '[Nanobite cpr_test] Approve?', bodyText: 'Exact draft\n  keep spaces', idempotencyKey: 'cpr_test:approval:1' };
 test('local mailbox routes requests and replies without network or automatic approval', async () => {
     const db = openDb(':memory:');
     migrate(db);
@@ -35,7 +35,7 @@ test('local mailbox routes requests and replies without network or automatic app
     }
 });
 test('human replies and duplicate sends survive database restart', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'contextpr-local-'));
+    const dir = mkdtempSync(join(tmpdir(), 'nanobite-local-'));
     const path = join(dir, 'mail.db');
     let db = openDb(path);
     migrate(db);

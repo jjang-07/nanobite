@@ -6,7 +6,7 @@ if (process.env.MAIL_PROVIDER !== 'primitive') {
     process.exit(0);
 }
 const c = loadConfig(), client = clientForIdentity(c.RESPONDER_IDENTITY, c);
-const r = await client.sendMail({ from: c.RESPONDER_IDENTITY, to: c.APPROVER_EMAIL, subject: 'ContextPR delivery check', bodyText: 'ContextPR email delivery test. No approval or reply is needed.', idempotencyKey: `${newPrId()}:smoke:1`, wait: true });
+const r = await client.sendMail({ from: c.RESPONDER_IDENTITY, to: c.APPROVER_EMAIL, subject: 'Nanobite delivery check', bodyText: 'Nanobite email delivery test. No approval or reply is needed.', idempotencyKey: `${newPrId()}:smoke:1`, wait: true });
 console.log({ status: r.status, delivery_status: r.deliveryStatus });
 const baseline = await client.listInbound(c.RESPONDER_IDENTITY, null, 0);
 console.log({ newest_id: baseline.items[0]?.id ?? null, nextSince: baseline.nextSince });

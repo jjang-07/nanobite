@@ -1,7 +1,7 @@
 import type { PrRow, EventRow } from '../db/db.ts';
 import type { Config } from '../config.ts';
 /**
- * Package-tracking view of one Context PR: seven stages, with the three gates labeled. Status is
+ * Package-tracking view of one Nanobite request: seven stages, with the three gates labeled. Status is
  * derived from the request state; event timestamps add times. Works with no events (Inbox rows).
  */
 export type StepStatus = 'done' | 'current' | 'waiting' | 'stopped' | 'skipped';

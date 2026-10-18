@@ -9,7 +9,7 @@ import { acquireWorkerLock, assertWorkerStopped } from '../src/runtime-lock.ts';
 import { resetDatabase } from '../scripts/reset.ts';
 import { openDb, migrate, insertPr, listPrs } from '../src/db/db.ts';
 function temporary(t: TestContext) {
-    const directory = mkdtempSync(join(tmpdir(), 'contextpr-runtime-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'nanobite-runtime-test-'));
     t.after(() => rmSync(directory, { recursive: true, force: true }));
     return join(directory, 'contextpr.db');
 }

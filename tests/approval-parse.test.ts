@@ -37,9 +37,9 @@ test('phone mail clients: wrapped gmail attribution, outlook mobile, outlook des
     const wrapped = 'approve\n\nOn Sat, Oct 17, 2026 at 4:51 PM\n<sdk-help@fair-fly.primitive.email> wrote:\n\n> DRAFT ANSWER\n> approve';
     assert.equal(parseDecision(wrapped).decision, 'approve');
     assert.equal(parseDecision('Approve always\n\nGet Outlook for iOS<https://aka.ms/o0ukef>\n________________________________\nFrom: sdk-help@fair-fly.primitive.email\nSent: Saturday, October 17, 2026 4:51 PM').decision, 'approve_always');
-    assert.equal(parseDecision('approve\n\n________________________________\nFrom: ContextPR <sdk-help@fair-fly.primitive.email>\nTo: Yunha Lee').decision, 'approve');
+    assert.equal(parseDecision('approve\n\n________________________________\nFrom: Nanobite <sdk-help@fair-fly.primitive.email>\nTo: Yunha Lee').decision, 'approve');
     assert.equal(parseDecision('revoke\n\nSent from Outlook for Android').decision, 'revoke');
-    const edit = parseDecision('edit\nUpgrade to 2.4.0 and use preserveIdempotencyKey: true.\n\nOn Sat, Oct 17, 2026 at 4:51 PM\nContextPR <sdk-help@fair-fly.primitive.email> wrote:\n> old draft');
+    const edit = parseDecision('edit\nUpgrade to 2.4.0 and use preserveIdempotencyKey: true.\n\nOn Sat, Oct 17, 2026 at 4:51 PM\nNanobite <sdk-help@fair-fly.primitive.email> wrote:\n> old draft');
     assert.equal(edit.decision, 'edit');
     assert.equal(edit.text, 'Upgrade to 2.4.0 and use preserveIdempotencyKey: true.');
 });
