@@ -104,3 +104,10 @@ Still open: the physical checklist.
 - Requests now come only from agents: the Inbox request form, New request button and the dashboard's request endpoint were removed. The dashboard server test now creates its request through the MCP tool function and asserts the endpoint is gone.
 - Claude Desktop: what we built is an MCP server, not a connector. Desktop connectors are remote servers reached from Anthropic's cloud and need a public HTTPS address, which this loopback demo does not have. Desktop can launch our stdio server locally from its config. `npm run connect -- desktop` backs up the config, adds only `nanobite` with an absolute Node path and database path, and keeps every other setting. Verified by launching the configured command from `/` with no PATH: initialize and tools/list returned all four tools. Desktop must be restarted to load it.
 - 130 tests pass; typecheck clean.
+
+## Four-point tracker, ChatGPT connector, handoff (2026-10-17, user request)
+
+- Tracker: Outcome step removed; the line is Asked, Received, Three gates, Delivered, with Rules, Minimize and Human listed inside the gates checkpoint. Completion animation applies to the checkpoint and to each listed gate.
+- ChatGPT: it only connects to remote MCP servers over HTTPS and cannot send a token header, so the MCP endpoint also accepts the token in the path (`/mcp/<token>`, compared in constant time, stripped before the SDK handler), and `npm run chatgpt` opens a Cloudflare quick tunnel and prints the connector URL. First live run failed because the script checked the brand-new hostname before it existed in public DNS and macOS cached the miss; the script now waits 15 seconds, retries for three minutes, and prints the URL regardless. Verified from the public internet: initialize, tools/list (four tools, read and write hints correct), and 401 for a wrong token. Creating the connector inside ChatGPT is untested.
+- HANDOFF.md written with the current state, run instructions, connector test steps, demo video shot list and pitch deck outline.
+- 134 tests pass; typecheck clean.

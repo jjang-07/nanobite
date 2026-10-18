@@ -16,6 +16,7 @@
     "benchmark": "node --env-file-if-exists=.env scripts/benchmark.ts",
     "stats:sessions": "node scripts/session-stats.ts",
     "connect": "node --env-file-if-exists=.env scripts/connect-agent.ts",
+    "chatgpt": "node --env-file-if-exists=.env scripts/chatgpt-tunnel.ts",
     "preflight": "node --env-file-if-exists=.env scripts/preflight.ts"
   },
   "dependencies": {

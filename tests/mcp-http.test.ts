@@ -51,3 +51,16 @@ test('HTTP MCP configuration: empty token disables it, weak tokens and port clas
     assert.throws(() => loadConfig({ MCP_HTTP_PORT: '8787' }), /different from DASHBOARD_PORT/);
     assert.deepEqual(loadConfig({ MCP_HTTP_ALLOWED_HOSTS: 'a.example, b.example' }).MCP_HTTP_ALLOWED_HOSTS, ['a.example', 'b.example']);
 });
+test('clients that cannot send headers (ChatGPT) authenticate with the token in the path', async () => {
+    const db = openDb(':memory:'); migrate(db);
+    const server = await startMcpHttp(db, { port: 0, token: TOKEN, requesterIdentity: 'yunha-agent@startup.primitive.email' });
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const at = (path: string) => fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'chatgpt', version: '0' } } }) });
+    try {
+        assert.equal((await at(`/mcp/${TOKEN}`)).status, 200);
+        assert.equal((await at('/mcp/wrong-token-0123456789abcdef')).status, 401);
+        assert.equal((await at('/mcp/')).status, 401);
+        assert.equal((await at(`/other/${TOKEN}`)).status, 404);
+    }
+    finally { await new Promise<void>(resolve => server.close(() => resolve())); db.close(); }
+});

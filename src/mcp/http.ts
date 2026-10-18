@@ -42,11 +42,14 @@ export async function startMcpHttp(db: DatabaseSync, options: McpHttpOptions): P
             if (origin && !allowed.has(origin.replace(/^https?:\/\//, '')))
                 return plain(res, 403, 'Origin not allowed');
             const url = new URL(req.url ?? '/', `http://${hostHeader}`);
-            if (url.pathname !== '/mcp')
+            // ChatGPT connectors cannot send headers, so /mcp/<token> is accepted as well as a bearer header.
+            const pathToken = url.pathname.startsWith('/mcp/') ? decodeURIComponent(url.pathname.slice('/mcp/'.length)) : null;
+            if (url.pathname !== '/mcp' && pathToken === null)
                 return plain(res, 404, 'Not found. The MCP endpoint is /mcp.');
-            const supplied = /^Bearer\s+(.+)$/i.exec(req.headers.authorization ?? '')?.[1] ?? '';
+            const supplied = pathToken ?? /^Bearer\s+(.+)$/i.exec(req.headers.authorization ?? '')?.[1] ?? '';
             if (!timingSafeEqual(digest(supplied), expected))
-                return plain(res, 401, 'Missing or invalid bearer token', { 'www-authenticate': 'Bearer' });
+                return plain(res, 401, 'Missing or invalid token', { 'www-authenticate': 'Bearer' });
+            url.pathname = '/mcp'; // the token never travels past this check
             const chunks: Buffer[] = [];
             for await (const chunk of req)
                 chunks.push(chunk as Buffer);

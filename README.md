@@ -1,5 +1,7 @@
 # Nanobite
 
+**Start here:** [HANDOFF.md](HANDOFF.md) has the current state, how to run it, and the next steps (connector tests, demo video, pitch deck).
+
 Nanobite lets a coding agent ask another company's engineering agent for one missing answer. The responder searches a session transcript, removes protected details, drafts a small answer, and presents the exact words for human review. The requester receives only the approved capsule and can report whether it fixed the problem.
 
 Mail runs either through **live Primitive email** (`MAIL_PROVIDER=primitive`, used for the hackathon demo) or a **local inbox** in the dashboard (`MAIL_PROVIDER=local`, no email service). Claude is the selected demo model; Ollama is an optional local alternative. The Acme scenario and TK transcript are synthetic fixtures.
