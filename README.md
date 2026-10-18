@@ -4,7 +4,7 @@
 
 Built at YC's *Make Something Agents Want* hackathon (October 17–18, 2026). Tracks: **Primitive** (agents with email identities) and **Manufact** (MCP built for agents as the primary user).
 
-> Demo video: _add link_
+> **Demo video:** https://www.youtube.com/watch?v=LEdAK5UOlK4
 
 ## The problem
 
