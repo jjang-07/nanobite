@@ -113,7 +113,7 @@ Forms use two columns where space allows and one column on small screens. The qu
 
 ## Elevation & Depth
 
-The interface is flat. Separate content with space and hairline rules. Do not use shadows, gradients, raised panels, or repeated card containers. Do not add motion to routine state or navigation changes.
+The interface is flat. Separate content with space and hairline rules. Do not use shadows, gradients, raised panels, or repeated card containers. Do not add motion to routine state or navigation changes. The one exception is the tracker's current step: a thin ring pulses to show the request is live and waiting, and it stops under reduced motion.
 
 ## Shapes
 
@@ -126,7 +126,10 @@ Controls have square corners and a clear one-pixel boundary. Use simple rectangu
 - **State:** Pair a textual state with a plain-language explanation. Accent color never carries meaning alone.
 - **Review:** The draft remains selectable and preserves its exact text. Approve draft is the immediate action. Editing, scoped future approval, and denial use clearly named disclosures. Their submit values remain distinct.
 - **Forms:** Associate every field with a visible label. Explain optional inputs and non-obvious constraints. Use at least 44px-tall targets, 16px text in textareas, and a two-pixel visible focus outline offset by four pixels.
-- **Refresh and submission:** The inbox can refresh every five seconds only when the document is visible and the user is not editing. Detail refresh is manual. Unsaved changes block refresh and offer an explicit discard action. Submit feedback marks the form busy and blocks a duplicate submission while preserving the selected action value.
+- **Live updates:** The Inbox table and the request detail update in place about once a second while the page is visible. They poll a version endpoint, swap only the live region, and never reload the page. Updates pause while a form has focus or unsaved edits. A small "Live" stamp in the heading shows the last update time; the manual Refresh link remains.
+- **Tracker:** Each request shows a delivery-style track of seven stages: Asked, Received, Gate 1 Rules, Gate 2 Minimize, Gate 3 Human, Delivered, Outcome. The three gates are grouped under one label. Done stages are filled blue with a time; the current stage is a blue ring with its waiting text (for example "Waiting for TK"); a stop is near-black with its reason; skipped stages are dashed and read "Not shared". Every status is also written in words. Below 760px the track is vertical. Inbox rows show the same stages as a seven-segment bar under the state text.
+- **Approval email:** The same language in email: system sans, white page, hairline rules, muted labels, square tags, no images or icons. The exact draft comes first with a near-black left rule, then masked items, flags, sources, requester and topic as labeled rows, then the four reply commands. Inline styles and table layout only, a plain-text part always included, and it fits a 390px phone without horizontal scrolling.
+- **Submission:** Unsaved changes block refresh and offer an explicit discard action. Submit feedback marks the form busy and blocks a duplicate submission while preserving the selected action value.
 - **Evidence:** Use native details/summary controls for transport IDs, source IDs, raw event details, and line changes. Keep changes readable through text addition/removal marks, not color alone.
 - **Errors:** Use the same shell and typography, a specific explanation, and a safe return link. Do not substitute a bare server string for a recovery page.
 

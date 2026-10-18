@@ -78,3 +78,11 @@ Still open: the physical checklist.
 - `npm run preflight` makes read-only checks of keys, model, Primitive account, approver reachability, seeded data, HTTP token, worker, mock Acme API and the red starting test, and prints a fix for each problem. Approver reachability is tested.
 - Real-agent rehearsal on a throwaway database with an internal approver: Claude Code (headless, limited to the demo test command and the ContextPR tools) ran the red test, called `request_context` over HTTP MCP, reported `pending` and the `next_action` without waiting. The approver replied `approve` through Primitive; delivery followed in about 1 second. A new Claude Code session fetched the capsule, made the one-line `preserveIdempotencyKey` change, reran the test green, and recorded `passed`. `charge.ts` was restored to red afterward.
 - `DEMO.md` is the one-page stage script.
+
+## Styled approval email, live dashboard, tracker (2026-10-17, user request)
+
+- Approval email is now HTML in the dashboard's design language (system sans, hairlines, muted labels, square tags, no images or icons) with the exact draft first, then masked items, flags, sources, requester and topic, then the four reply commands. The plain-text part is unchanged, so reply parsing is unaffected. The draft is HTML-escaped. Checked in headless Chrome at desktop width and inside a 390px frame: no horizontal overflow.
+- Style preview sent through Primitive to the approver and to the account owner; both delivered. The preview subject and plain text say replies are ignored, and the worker tracks no preview message.
+- Dashboard updates live: the Inbox table and request detail poll a version endpoint once a second and swap only the live region, never reloading, and pause while a form is focused or has unsaved edits.
+- Delivery-style tracker of seven stages with the three gates grouped and labeled; statuses done, current, stopped and skipped are written in words and shown by markers; vertical below 760px; a seven-segment bar in each Inbox row.
+- Tests: stage statuses for every state including denial, no source and automatic approval; live endpoint versioning; the browser script run in a sandbox (swaps on change, never while editing, never reloads); HTML email order, escaping and `body_html` mapping. 120 tests pass; typecheck clean.

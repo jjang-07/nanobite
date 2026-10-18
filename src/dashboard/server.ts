@@ -4,7 +4,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { once } from 'node:events';
 import { listPrs, getPr, listEvents } from '../db/db.ts';
-import { renderInbox, renderPr, renderError } from './render.ts';
+import { renderInbox, renderPr, renderError, renderInboxBody, renderPrBody, inboxVersion, prVersion } from './render.ts';
 import { loadConfig } from '../config.ts';
 import type { Config } from '../config.ts';
 import { requestContext } from '../mcp/tools.ts';
@@ -35,11 +35,22 @@ export async function startDashboard(db: DatabaseSync, port: number, options: {
             }
             const url = new URL(req.url ?? '/', `http://${host}`);
             if (req.method === 'GET') {
+                // Live updates: JSON with fresh HTML only when the version changed, polled once a second by the page.
+                const live = (version: string, html: () => string) => {
+                    res.statusCode = 200;
+                    res.setHeader('content-type', 'application/json; charset=utf-8');
+                    res.end(JSON.stringify(url.searchParams.get('v') === version ? { version } : { version, html: html() }));
+                };
                 if (url.pathname === '/') {
                     send(200, renderInbox(listPrs(db, { limit: 500 }), { csrfToken, config }));
                     return;
                 }
-                const match = url.pathname.match(/^\/pr\/(cpr_[a-z0-9]+)$/);
+                if (url.pathname === '/live') {
+                    const prs = listPrs(db, { limit: 500 });
+                    live(inboxVersion(prs), () => renderInboxBody(prs, { csrfToken, config }));
+                    return;
+                }
+                const match = url.pathname.match(/^\/pr\/(cpr_[a-z0-9]+)(\/live)?$/);
                 const p = match ? getPr(db, match[1]) : null;
                 if (!p) {
                     send(404, 'Context PR not found. Return to / for the Inbox.');
@@ -47,7 +58,12 @@ export async function startDashboard(db: DatabaseSync, port: number, options: {
                 }
                 const ids = new Set(db.prepare('SELECT sent_email_id FROM sent_emails WHERE pr_id=?').all(p.id).map(r => r.sent_email_id));
                 const messages = config.MAIL_PROVIDER === 'local' ? listLocalInbox(db, config.APPROVER_EMAIL).filter(m => ids.has(m.sentEmailId)) : [];
-                send(200, renderPr(p, listEvents(db, p.id), { csrfToken, config, messages }));
+                const events = listEvents(db, p.id);
+                if (match?.[2]) {
+                    live(prVersion(p, events, messages), () => renderPrBody(p, events, { csrfToken, config, messages }));
+                    return;
+                }
+                send(200, renderPr(p, events, { csrfToken, config, messages }));
                 return;
             }
             if (req.method !== 'POST') {

@@ -64,7 +64,7 @@ export function createPrimitiveClient(apiKey: string, fetchImpl: typeof fetch = 
         return json;
     }
     return {
-        async sendMail(i) { const j = await request('POST', '/send-mail', undefined, { from: i.from, to: i.to, subject: i.subject, body_text: i.bodyText, in_reply_to: i.inReplyTo, references: i.references, wait: i.wait, wait_timeout_ms: i.wait ? 30000 : undefined }, i.idempotencyKey, i.wait ? 30000 : 0); return result(j.data); },
+        async sendMail(i) { const j = await request('POST', '/send-mail', undefined, { from: i.from, to: i.to, subject: i.subject, body_text: i.bodyText, body_html: i.bodyHtml, in_reply_to: i.inReplyTo, references: i.references, wait: i.wait, wait_timeout_ms: i.wait ? 30000 : undefined }, i.idempotencyKey, i.wait ? 30000 : 0); return result(j.data); },
         async replyToEmail(id, i) { return result((await request('POST', `/emails/${encodeURIComponent(id)}/reply`, undefined, { body_text: i.bodyText, wait: i.wait }, i.idempotencyKey, i.wait ? 30000 : 0)).data); },
         async awaitReply(id, waitMs) {
             const wait = clamp(waitMs, 1000, 30000);

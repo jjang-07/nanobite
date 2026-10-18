@@ -3,6 +3,8 @@ export interface SendInput {
     to: string;
     subject: string;
     bodyText: string;
+    /** Optional styled alternative; bodyText stays the canonical, parseable part. */
+    bodyHtml?: string;
     idempotencyKey: string;
     inReplyTo?: string;
     references?: string[];
