@@ -1,5 +1,7 @@
 # Nanobite demo: one approved answer, one fixed test
 
+> This is the currently runnable fallback demo. The final demo (a leaked key caught by the reviewer, then blocked by a rule) is planned in `DEMO-HANDOVER.md`, together with the code it still needs.
+
 Show a coding agent obtaining a narrow answer from a vendor's synthetic engineering transcript, with a real human reviewing what leaves. Both sides run on this laptop for the demo. Primitive carries real email; the Acme SDK, charge records, and source transcript are synthetic.
 
 ## Configure the live demo

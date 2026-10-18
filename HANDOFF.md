@@ -1,6 +1,6 @@
 # Nanobite: current handoff
 
-Updated October 17, 2026. Working repository: `jjang-07/goat-yc-hackathon`, branch `main`. This document summarizes the current implementation and this workstation's verification. `DEMO.md` contains the rehearsal instructions; `HANDOVER.md` and `PLAN.md` retain earlier specifications and build history.
+Updated October 17, 2026. Working repository: `jjang-07/nanobite`, branch `main`. This document summarizes the current implementation and this workstation's verification. **For the final demo plan, its script and the remaining pre-demo work, read `DEMO-HANDOVER.md`.** `DEMO.md` contains the currently runnable rehearsal instructions (the fallback demo); `HANDOVER.md` and `PLAN.md` retain earlier specifications and build history.
 
 ## What the product does
 
@@ -74,7 +74,7 @@ Keys, actual reviewer configuration, SQLite demo data, dependencies, and runtime
 
 ## What was verified on this workstation
 
-- **153 automated tests pass**, including decision parsing/templates, rendered statuses, legacy migration, protection rule persistence, exact-scope grants and revocation, HTTP form validation/security, and a fake-transport pipeline covering automatic approval and return to human review after revocation.
+- **161 automated tests pass**, including decision parsing/templates, rendered statuses, legacy migration, protection rule persistence, exact-scope grants and revocation, HTTP form validation/security, and a fake-transport pipeline covering automatic approval and return to human review after revocation.
 - TypeScript typecheck and `git diff --check` pass.
 - The live application uses Claude and Primitive. Real approval emails were delivered, and actual human replies exercised approve, edit, and deny paths through to delivery.
 - A fresh email with all three improved button templates was delivered; its mailto reply bodies include the optional reason section and the edit answer field. End-to-end human use of the new reason field has not yet been verified.

@@ -1,6 +1,6 @@
 # Nanobite
 
-**Start here:** [HANDOFF.md](HANDOFF.md) has the current state, how to run it, and the next steps (connector tests, demo video, pitch deck).
+**Start here:** [DEMO-HANDOVER.md](DEMO-HANDOVER.md) has the final demo script, the decisions behind it, and the code changes and checklist still needed before the demo. [HANDOFF.md](HANDOFF.md) has the current state and how to run it.
 
 Nanobite lets a coding agent ask another company's engineering agent for one missing answer. The responder searches a session transcript, removes protected details, drafts a small answer, and presents the exact words for human review. The requester receives only the approved capsule and can report whether it fixed the problem.
 
