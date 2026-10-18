@@ -86,7 +86,7 @@ function shortLabel(s: TrackStep): string {
     return s.status === 'done' ? 'Done' : s.status === 'skipped' ? 'Not shared' : s.label;
 }
 export function trackerHtml(pr: PrRow, events: EventRow[], config?: Pick<Config, 'APPROVER_NAME'>): string {
-    const items = trackSteps(pr, events, config).map(s => `<li class="track-step" data-group="${GROUP[s.key]}" data-status="${s.status}"><span class="track-dot" aria-hidden="true"></span><span class="track-kicker">${s.gate ? `Gate ${s.gate}` : '&nbsp;'}</span><span class="track-title">${escape(s.title)}</span><span class="track-label">${escape(shortLabel(s))}</span></li>`).join('');
+    const items = trackSteps(pr, events, config).map(s => `<li class="track-step" data-anim-key="step-${s.key}" data-group="${GROUP[s.key]}" data-status="${s.status}"><span class="track-dot" aria-hidden="true"></span><span class="track-kicker">${s.gate ? `Gate ${s.gate}` : '&nbsp;'}</span><span class="track-title">${escape(s.title)}</span><span class="track-label">${escape(shortLabel(s))}</span></li>`).join('');
     return `<section class="section tracking" aria-labelledby="track-heading"><h2 id="track-heading">Tracking</h2><div class="track-groups" aria-hidden="true"><span class="track-group request">Request</span><span class="track-group gates">Three gates before anything is shared</span><span class="track-group delivery">Delivery</span></div><ol class="track" aria-label="Request progress">${items}</ol></section>`;
 }
 /** The step-by-step record with times and details, shown at the bottom of the request page. */
@@ -96,12 +96,12 @@ export function activityLogHtml(pr: PrRow, events: EventRow[], config?: Pick<Con
 }
 /** Seven-segment bar for an Inbox row, grouped 2 · 3 · 2; the state text next to it carries the meaning. */
 export function miniTrack(pr: PrRow, config?: Pick<Config, 'APPROVER_NAME'>): string {
-    return `<span class="mini-track" aria-hidden="true">${trackSteps(pr, [], config).map(s => `<span data-group="${GROUP[s.key]}" data-status="${s.status}"></span>`).join('')}</span>`;
+    return `<span class="mini-track" aria-hidden="true">${trackSteps(pr, [], config).map((s, i) => `<span data-anim-key="${escape(pr.id)}:${i}" data-group="${GROUP[s.key]}" data-status="${s.status}"></span>`).join('')}</span>`;
 }
 export const trackerStyles = `
 .track-groups{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));margin:18px 0 0;font-size:12px;color:var(--muted)}
-.track-group{padding:0 16px 6px 0;margin-right:16px;border-bottom:1px solid var(--line)}
-.track-group.request{grid-column:1/span 2}.track-group.gates{grid-column:3/span 3;color:var(--state);font-weight:600;border-bottom-color:var(--state)}.track-group.delivery{grid-column:6/span 2;margin-right:0}
+.track-group{padding:0 16px 0 0;margin-right:16px}
+.track-group.request{grid-column:1/span 2}.track-group.gates{grid-column:3/span 3;color:var(--state);font-weight:600}.track-group.delivery{grid-column:6/span 2;margin-right:0}
 .track{list-style:none;padding:0;margin:18px 0 0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
 .track-step{position:relative;min-width:0;padding:26px 16px 0 0;--on:var(--soft)}
 .track-step[data-group=gate]{--on:var(--state)}
@@ -121,8 +121,20 @@ export const trackerStyles = `
 .track-label{display:block;font-size:13px;color:var(--muted)}
 .track-step[data-status=current] .track-label{color:var(--state);font-weight:600}
 .track-step[data-status=stopped] .track-label{color:#181818;font-weight:600}
+/* Completion: when a live update turns a step Done, its dot pops, a ring fades out and its line sweeps to the next step. */
+.track-step.just-done .track-dot{animation:step-pop .7s cubic-bezier(.2,.9,.3,1.4)}
+.track-step.just-done .track-dot::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--on);opacity:0;animation:step-burst .9s ease-out}
+.track-step.just-done::before{transform-origin:left center;animation:line-fill .8s ease-out}
+.track-step.just-done .track-label{animation:label-in .5s ease-out}
+.mini-track span.just-done{animation:seg-pop .6s ease-out}
+@keyframes step-pop{0%{transform:scale(.5)}55%{transform:scale(1.45)}100%{transform:scale(1)}}
+@keyframes step-burst{0%{transform:scale(.6);opacity:.9}100%{transform:scale(2.4);opacity:0}}
+@keyframes line-fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes line-fill-v{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes label-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes seg-pop{0%{transform:scaleY(1)}50%{transform:scaleY(2.6)}100%{transform:scaleY(1)}}
 @keyframes track-pulse{0%{transform:scale(.55);opacity:.7}100%{transform:scale(1.15);opacity:0}}
-@media(prefers-reduced-motion:reduce){.track-step[data-status=current] .track-dot::after{animation:none;opacity:.35}}
+@media(prefers-reduced-motion:reduce){.track-step[data-status=current] .track-dot::after{animation:none;opacity:.35}.just-done,.just-done .track-dot,.just-done .track-label,.just-done::before,.just-done .track-dot::after{animation:none!important}}
 .activity-log{list-style:none;padding:0;margin:16px 0 0}.activity-log>li{border-top:1px solid var(--line);padding:13px 0}
 .activity-log p{margin:2px 0 0;font-size:14px;color:var(--muted);overflow-wrap:anywhere}
 .log-head{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap;font-size:14px}.log-head strong{font-weight:500}
@@ -134,5 +146,5 @@ export const trackerStyles = `
 .live-stamp{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .intro.top{margin-bottom:10px}.status-block{margin-bottom:0}
 :root{--soft:#9db4d6}
-@media(max-width:760px){.track-groups{display:none}.track{grid-template-columns:1fr}.track-step{padding:0 0 18px 32px}.track-step::before{top:0;bottom:0;left:7px;right:auto;width:2px;height:auto}.track-step:last-child::before{display:none}.track-kicker{display:inline;margin-right:8px}.track-title{display:inline}.track-kicker:empty,.track-step:not([data-group=gate]) .track-kicker{display:none}}
+@media(max-width:760px){.track-groups{display:none}.track{grid-template-columns:1fr}.track-step{padding:0 0 18px 32px}.track-step::before{top:0;bottom:0;left:7px;right:auto;width:2px;height:auto}.track-step:last-child::before{display:none}.track-kicker{display:inline;margin-right:8px}.track-title{display:inline}.track-kicker:empty,.track-step:not([data-group=gate]) .track-kicker{display:none}.track-step.just-done::before{transform-origin:top center;animation-name:line-fill-v}}
 `;

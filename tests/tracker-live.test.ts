@@ -56,7 +56,7 @@ test('detail page and Inbox carry the tracker and update in place, never by relo
     const inbox = renderInbox([p.row], { config });
     assert.match(inbox, /data-live="\/live"/);
     assert.match(inbox, /class="mini-track"/);
-    assert.match(inbox, /<span data-group="gate" data-status=/, 'gate segments are marked in the Inbox bar');
+    assert.match(inbox, /<span [^>]*data-group="gate" data-status=/, 'gate segments are marked in the Inbox bar');
     assert.doesNotMatch(inbox, /action="\/requests"/, 'requests come from agents, not from a dashboard form');
     assert.doesNotMatch(inbox, /setInterval\(|http-equiv="refresh"/);
 });
@@ -100,4 +100,26 @@ test('the page script swaps in fresh HTML when the version changes, and never wh
     await tick();
     assert.equal(root.innerHTML, 'NEW', 'no swap while the reviewer has unsaved edits');
     assert.equal(root.dataset.version, 'v2');
+});
+test('a step that just completed is marked for the completion animation; nothing animates on first load', async () => {
+    const p = pr('awaiting_approval', { draft_answer: 'Use one key.' }, ['request_sent']);
+    const html = renderPr(p.row, p.events, { config });
+    assert.match(html, /<li class="track-step" data-anim-key="step-human"/);
+    assert.match(renderInbox([p.row], { config }), /data-anim-key="cpr_t1:4"/);
+    const script = html.match(/<script>([\s\S]*?)<\/script>/)![1];
+    const el = (key: string, status: string) => { const classes: string[] = []; return { dataset: { animKey: key, status }, classList: { add: (c: string) => classes.push(c) }, classes }; };
+    let current = [el('step-rules', 'done'), el('step-human', 'current')];
+    const root = { dataset: { live: '/pr/cpr_t1/live', version: 'v1' } as Record<string, string>, contains: () => false, querySelectorAll: () => current,
+        set innerHTML(_v: string) { current = [el('step-rules', 'done'), el('step-human', 'done')]; }, get innerHTML() { return ''; } };
+    const stub = { textContent: '', hidden: true, addEventListener: () => { } };
+    let timer: Function | null = null;
+    const document = { hidden: false, activeElement: null, addEventListener: () => { }, querySelectorAll: () => [], querySelector: (s: string) => s === '[data-live]' ? root : stub };
+    runInNewContext(script, { document, window: { addEventListener: () => { } }, location: { reload: () => assert.fail() }, fetch: async () => ({ ok: true, json: async () => ({ version: 'v2', html: 'x' }) }), setTimeout: (f: Function) => { timer = f; }, encodeURIComponent, Date });
+    await timer!();
+    assert.deepEqual(current[1].classes, ['just-done'], 'Human just completed');
+    assert.deepEqual(current[0].classes, [], 'Rules was already done');
+});
+test('group labels above the tracker have no underline', () => {
+    const p = pr('queued');
+    assert.doesNotMatch(renderPr(p.row, p.events, { config }), /\.track-group\{[^}]*border-bottom/);
 });

@@ -113,7 +113,7 @@ Forms use two columns where space allows and one column on small screens. The qu
 
 ## Elevation & Depth
 
-The interface is flat. Separate content with space and hairline rules. Do not use shadows, gradients, raised panels, or repeated card containers. Do not add motion to routine state or navigation changes. The one exception is the tracker's current step: a thin ring pulses to show the request is live and waiting, and it stops under reduced motion.
+The interface is flat. Separate content with space and hairline rules. Do not use shadows, gradients, raised panels, or repeated card containers. Do not add motion to routine state or navigation changes. Two exceptions, both on the tracker and both off under reduced motion: the current step's thin ring pulses to show the request is live and waiting, and when a live update turns a step Done, its dot pops, a ring fades out and its line sweeps to the next step (Inbox segments pop the same way). Nothing animates on a normal page load. Group labels above the tracker have no underline.
 
 ## Shapes
 
