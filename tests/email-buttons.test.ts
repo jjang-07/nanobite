@@ -52,3 +52,13 @@ test('a decision composed by a button (a fresh email, not a threaded reply) is a
     await pollInbound(s.db, s.deps);
     assert.equal(getPr(s.db, id)!.decision, 'edit', 'a later email cannot change a finished decision');
 });
+test('email labels are short, sections breathe, and Details is collapsed by default', () => {
+    const html = buildApprovalEmail(row(), cfg).bodyHtml;
+    for (const label of ['>Summary<', '>Exact answer<', '>Flagged for you<'])
+        assert.ok(html.includes(label), label);
+    assert.doesNotMatch(html, /In plain words|word for word|model thinks/);
+    // Collapsed everywhere: the content is hidden inline and only an [open] details element reveals it.
+    assert.match(html, /<style>[^<]*details\[open\][^<]*<\/style>/);
+    assert.match(html, /<div class="nb-dc" style="display:none[^"]*mso-hide:all/);
+    assert.match(html, /<summary class="nb-s" style="display:none/);
+});

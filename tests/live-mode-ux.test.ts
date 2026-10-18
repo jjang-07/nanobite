@@ -13,9 +13,10 @@ test('a retried identical error is logged once, a different error is logged agai
     recordError(db, 'cpr_err1', new Error('Primitive 429 rate_limited'));
     assert.equal(listEvents(db, 'cpr_err1').filter(e => e.kind === 'error').length, 2);
 });
-test('the Inbox offers the request form in live email mode too', () => {
-    const config = loadConfig({ MAIL_PROVIDER: 'primitive', PRIMITIVE_API_KEY: 'test', REQUESTER_IDENTITY: 'yunha-agent@x.primitive.email', RESPONDER_IDENTITY: 'sdk-help@x.primitive.email', APPROVER_EMAIL: 'tk@x.primitive.email' });
-    const html = renderInbox([], { csrfToken: 'c'.repeat(64), config });
-    assert.match(html, /action="\/requests"/);
-    assert.match(html, /name="question"/);
+test('the Inbox has no request form in either mail mode: requests come from agents', () => {
+    for (const mail of ['local', 'primitive']) {
+        const config = loadConfig({ MAIL_PROVIDER: mail, PRIMITIVE_API_KEY: 'test', REQUESTER_IDENTITY: 'yunha-agent@x.primitive.email', RESPONDER_IDENTITY: 'sdk-help@x.primitive.email', APPROVER_EMAIL: 'tk@x.primitive.email' });
+        const html = renderInbox([], { csrfToken: 'c'.repeat(64), config });
+        assert.doesNotMatch(html, /action="\/requests"|name="question"/);
+    }
 });

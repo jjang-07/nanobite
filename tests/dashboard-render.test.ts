@@ -8,14 +8,11 @@ import type { LocalInboxMessage } from '../src/primitive/local.ts';
 function sample() { const db = openDb(':memory:'); migrate(db); insertPr(db, { id: 'cpr_demo', state: 'awaiting_approval', requester_identity: 'yunha@startup.local', responder_identity: 'sdk@acme.local', topic: 'sdk/retries', question: 'Why do retries create duplicate charges?' }); updatePr(db, 'cpr_demo', { draft_answer: 'Use one key.\nUnreleased line.', approved_text: 'Use one key.\nApproved change.', draft_flagged: '["v2.5"]', removals: '[{"placeholder":"[another customer]","count":2}]', matched_source_ids: '["session:3"]', approval_sent_email_id: 'sent_approval', request_sent_email_id: 'sent_request', request_thread_id: 'thread_request', decision: 'edit', approver: 'tk@acme.local', outcome_result: 'passed' }); const pr = getPr(db, 'cpr_demo')!; db.close(); return pr; }
 function message(purpose = 'approval'): LocalInboxMessage { return { id: 'in_approval', sentEmailId: 'sent_approval', purpose, reply: null, threadId: 'thread1', sender: 'sdk@acme.local', recipient: 'tk@acme.local', fromEmail: 'sdk@acme.local', toEmail: 'tk@acme.local', subject: '[Nanobite cpr_demo] Review', bodyText: 'Review exact draft', bodyHtml: null, receivedAt: '2026-10-17T20:00:00Z', snippet: null, fyi: false, automated: false, replyToSentEmailId: null, inReplyTo: [], references: [], attachments: [] }; }
 const config = loadConfig({});
-test('Inbox includes complete review table and explicit local request form', () => {
+test('Inbox includes the complete review table and no request form, since agents file requests', () => {
     const html = renderInbox([sample()], { csrfToken: 'safe-token', config });
     for (const value of ['cpr_demo', 'awaiting_approval', 'sdk/retries', '/pr/cpr_demo', 'Requester', 'Responder', 'Decision', 'Removals', 'Outcome', 'Updated', 'Local inbox', 'Ollama', 'Synthetic fixture demo'])
         assert.ok(html.includes(value), value);
-    assert.match(html, /<form[^>]+action="\/requests"/);
-    assert.match(html, /name="csrf" value="safe-token"/);
-    for (const name of ['responder', 'topic', 'question', 'context', 'on_behalf_of'])
-        assert.ok(html.includes(`name="${name}"`));
+    assert.doesNotMatch(html, /action="\/requests"|name="question"/);
     assert.doesNotMatch(html, /<meta[^>]+http-equiv="refresh"/i);
     assert.match(html, /dirty/);
 });
@@ -54,11 +51,11 @@ test('review hierarchy foregrounds the question and exact draft; evidence stays 
 });
 test('empty and failed states provide a clear next step; error pages reject external return links', () => {
     const inbox = renderInbox([], { config, csrfToken: 'token' });
-    assert.match(inbox, /Ask your first question/);
-    assert.match(inbox, /href="#new-request"/);
+    assert.match(inbox, /Waiting for an agent/);
+    assert.doesNotMatch(inbox, /#new-request|action="\/requests"/);
     const failed = renderPr({ ...sample(), state: 'failed' }, [], { config });
     assert.match(failed, /Request stopped/);
-    assert.match(failed, /Create a new request/);
+    assert.match(failed, /Ask your coding agent to send a new, narrower request/);
     assert.match(renderPr({ ...sample(), state: 'denied' }, [], { config }), /This request was declined or no matching source was available\. No answer was shared\./);
     const error = renderError('Request unavailable', '<script>bad()</script>', 'javascript:alert(1)', { config });
     assert.match(error, /<h1>Request unavailable<\/h1>/);

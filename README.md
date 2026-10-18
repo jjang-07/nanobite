@@ -89,6 +89,7 @@ npm run connect -- claude          # Claude Code over HTTP (registered for this 
 npm run connect -- claude stdio    # Claude Code over stdio
 npm run connect -- codex           # prints the ~/.codex/config.toml block for HTTP
 npm run connect -- codex stdio     # prints the stdio block
+npm run connect -- desktop         # adds Nanobite to the Claude Desktop app (local stdio); then restart the app
 npm run connect -- remove          # removes the Claude Code registration
 ```
 

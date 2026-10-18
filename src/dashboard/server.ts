@@ -7,7 +7,6 @@ import { listPrs, getPr, listEvents } from '../db/db.ts';
 import { renderInbox, renderPr, renderError, renderInboxBody, renderPrBody, inboxVersion, prVersion } from './render.ts';
 import { loadConfig } from '../config.ts';
 import type { Config } from '../config.ts';
-import { requestContext } from '../mcp/tools.ts';
 import { listLocalInbox, submitLocalReply } from '../primitive/local.ts';
 async function readForm(req: IncomingMessage) { let body = ''; for await (const chunk of req) {
     body += chunk;
@@ -83,17 +82,7 @@ export async function startDashboard(db: DatabaseSync, port: number, options: {
                 send(403, 'Invalid form token. Refresh the Inbox.');
                 return;
             }
-            if (url.pathname === '/requests') {
-                const r = requestContext(db, { responder: form.get('responder') ?? config.RESPONDER_IDENTITY, topic: form.get('topic') ?? '', question: form.get('question') ?? '', context: form.get('context') ?? undefined, on_behalf_of: form.get('on_behalf_of') ?? undefined }, { requesterIdentity: config.REQUESTER_IDENTITY });
-                if (r.isError) {
-                    res.setHeader('content-type', 'text/plain; charset=utf-8');
-                    send(400, String(r.structured.error));
-                    return;
-                }
-                res.writeHead(303, { location: `/pr/${r.structured.id}` });
-                res.end();
-                return;
-            }
+            // Requests come only from agents through MCP; the dashboard never files them.
             const match = url.pathname.match(/^\/pr\/(cpr_[a-z0-9]+)\/reply$/);
             if (!match || config.MAIL_PROVIDER !== 'local') {
                 send(404, 'Local approval route unavailable');

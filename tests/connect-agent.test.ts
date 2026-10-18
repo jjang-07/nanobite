@@ -21,3 +21,17 @@ test('Codex config never embeds the token and uses absolute paths for stdio', ()
 test('HTTP without a token is refused with a fix', () => {
     assert.throws(() => agentSetup('claude', 'http', { ...env, token: '' }), /MCP_HTTP_TOKEN/);
 });
+import { desktopEntry, mergeDesktopConfig } from '../scripts/connect-agent.ts';
+test('Claude Desktop gets a local stdio entry with absolute paths, since it has no shell PATH or working folder', () => {
+    const e = desktopEntry({ ...env, nodePath: '/opt/node/bin/node' });
+    assert.equal(e.command, '/opt/node/bin/node');
+    assert.deepEqual(e.args, ['--env-file-if-exists=/repo/.env', '/repo/src/mcp/server.ts']);
+    assert.equal(e.env.CONTEXTPR_DB, '/repo/data/contextpr.db');
+});
+test('merging into Claude Desktop config keeps every other setting and server', () => {
+    const before = { preferences: { a: 1 }, mcpServers: { other: { command: 'x' } } };
+    const after = mergeDesktopConfig(before, desktopEntry({ ...env, nodePath: '/n' }));
+    assert.deepEqual(after.preferences, { a: 1 });
+    assert.deepEqual(Object.keys(after.mcpServers).sort(), ['nanobite', 'other']);
+    assert.deepEqual(mergeDesktopConfig({}, desktopEntry({ ...env, nodePath: '/n' })).mcpServers.nanobite.command, '/n');
+});

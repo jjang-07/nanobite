@@ -80,64 +80,59 @@ export function trackSteps(pr: PrRow, events: EventRow[], config?: Pick<Config, 
         return { key, ...(t.gate ? { gate: t.gate } : {}), title: t.title, status, label, detail, time };
     });
 }
-const ROLE: Record<string, (approver: string) => string> = {
-    rules: () => 'Masks names, tickets and secrets',
-    minimize: () => 'Drafts the smallest answer',
-    human: approver => `${approver} approves the exact words`,
-};
-function stepHtml(s: TrackStep, approver: string): string {
-    const marker = s.gate ? String(s.gate) : '';
-    const role = s.gate ? `<span class="track-role">${escape(ROLE[s.key](approver))}</span>` : '';
-    const hidden = s.gate ? `<span class="visually-hidden">Gate ${s.gate}: </span>` : '';
-    return `<li class="track-step" data-status="${s.status}"><span class="track-dot" aria-hidden="true">${marker}</span><span class="track-title">${hidden}${escape(s.title)}</span>${role}<span class="track-label">${escape(s.label)}</span>${s.detail ? `<span class="track-detail">${escape(s.detail)}</span>` : ''}</li>`;
+const GROUP: Record<TrackStep['key'], 'request' | 'gate' | 'delivery'> = { asked: 'request', received: 'request', rules: 'gate', minimize: 'gate', human: 'gate', delivered: 'delivery', outcome: 'delivery' };
+/** Short status for the progress line; times and details go to the Activity log. */
+function shortLabel(s: TrackStep): string {
+    return s.status === 'done' ? 'Done' : s.status === 'skipped' ? 'Not shared' : s.label;
 }
 export function trackerHtml(pr: PrRow, events: EventRow[], config?: Pick<Config, 'APPROVER_NAME'>): string {
-    const steps = trackSteps(pr, events, config), approver = config?.APPROVER_NAME || 'The approver';
-    const zone = (cls: string, label: string, list: TrackStep[]) => `<div class="zone ${cls}"><p class="zone-label">${escape(label)}</p><ol class="zone-steps n${list.length}">${list.map(s => stepHtml(s, approver)).join('')}</ol></div>`;
-    return `<section class="section tracking" aria-labelledby="track-heading"><h2 id="track-heading">Tracking</h2><div class="track" aria-label="Request progress">${zone('request', 'Request', steps.slice(0, 2))}${zone('gates', 'Three gates before anything is shared', steps.slice(2, 5))}${zone('delivery', 'Delivery', steps.slice(5))}</div></section>`;
+    const items = trackSteps(pr, events, config).map(s => `<li class="track-step" data-group="${GROUP[s.key]}" data-status="${s.status}"><span class="track-dot" aria-hidden="true"></span><span class="track-kicker">${s.gate ? `Gate ${s.gate}` : '&nbsp;'}</span><span class="track-title">${escape(s.title)}</span><span class="track-label">${escape(shortLabel(s))}</span></li>`).join('');
+    return `<section class="section tracking" aria-labelledby="track-heading"><h2 id="track-heading">Tracking</h2><div class="track-groups" aria-hidden="true"><span class="track-group request">Request</span><span class="track-group gates">Three gates before anything is shared</span><span class="track-group delivery">Delivery</span></div><ol class="track" aria-label="Request progress">${items}</ol></section>`;
 }
-/** Seven-segment bar for an Inbox row, grouped 2 · 3 · 2 with the gates marked; the state text carries the meaning. */
+/** The step-by-step record with times and details, shown at the bottom of the request page. */
+export function activityLogHtml(pr: PrRow, events: EventRow[], config?: Pick<Config, 'APPROVER_NAME'>): string {
+    const rows = trackSteps(pr, events, config).filter(s => s.status !== 'waiting' && s.status !== 'skipped').map(s => `<li><div class="log-head"><strong>${s.gate ? `Gate ${s.gate} · ` : ''}${escape(s.title)}</strong><span class="note">${escape(s.time ?? '')}</span></div><p>${escape(s.status === 'done' ? s.detail : [s.label, s.detail].filter(Boolean).join(' · '))}</p></li>`).join('');
+    return `<section class="section" aria-labelledby="log-heading"><h2 id="log-heading">Activity log</h2><ol class="activity-log">${rows || '<li class="muted">Nothing has happened yet.</li>'}</ol></section>`;
+}
+/** Seven-segment bar for an Inbox row, grouped 2 · 3 · 2; the state text next to it carries the meaning. */
 export function miniTrack(pr: PrRow, config?: Pick<Config, 'APPROVER_NAME'>): string {
-    return `<span class="mini-track" aria-hidden="true">${trackSteps(pr, [], config).map(s => `<span${s.gate ? ' class="g"' : ''} data-status="${s.status}"></span>`).join('')}</span>`;
+    return `<span class="mini-track" aria-hidden="true">${trackSteps(pr, [], config).map(s => `<span data-group="${GROUP[s.key]}" data-status="${s.status}"></span>`).join('')}</span>`;
 }
 export const trackerStyles = `
-.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.track{display:grid;grid-template-columns:2fr 3.4fr 2fr;gap:14px;margin:20px 0 0;align-items:stretch}
-.zone{border-top:1px solid var(--line);padding:12px 0 4px;min-width:0}
-.zone-label{font-size:12px;color:var(--muted);margin:0 0 14px}
-.zone.gates{background:#f3f4f6;border-top:3px solid #181818;padding:12px 18px 14px}
-.zone.gates .zone-label{font-size:14px;font-weight:600;color:#181818}
-.zone-steps{list-style:none;margin:0;padding:0;display:grid}
-.zone-steps.n2{grid-template-columns:repeat(2,minmax(0,1fr))}.zone-steps.n3{grid-template-columns:repeat(3,minmax(0,1fr))}
-.track-step{position:relative;min-width:0;padding:22px 12px 0 0}
-.track-step::before{content:"";position:absolute;top:5px;left:0;right:0;height:2px;background:var(--line)}
-.track-step:last-child::before{right:auto;width:12px}
-.track-step[data-status=done]::before{background:var(--state)}
-.track-dot{position:absolute;top:0;left:0;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid #b8b8b8;box-sizing:border-box}
-.track-step[data-status=done] .track-dot{background:var(--state);border-color:var(--state)}
-.track-step[data-status=current] .track-dot{border-color:var(--state);border-width:3px}
+.track-groups{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));margin:18px 0 0;font-size:12px;color:var(--muted)}
+.track-group{padding:0 16px 6px 0;margin-right:16px;border-bottom:1px solid var(--line)}
+.track-group.request{grid-column:1/span 2}.track-group.gates{grid-column:3/span 3;color:var(--state);font-weight:600;border-bottom-color:var(--state)}.track-group.delivery{grid-column:6/span 2;margin-right:0}
+.track{list-style:none;padding:0;margin:18px 0 0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.track-step{position:relative;min-width:0;padding:26px 16px 0 0;--on:var(--soft)}
+.track-step[data-group=gate]{--on:var(--state)}
+.track-step::before{content:"";position:absolute;top:7px;left:0;right:0;height:2px;background:var(--line)}
+.track-step:last-child::before{right:auto;width:16px}
+.track-step[data-status=done]::before{background:var(--on)}
+.track-dot{position:absolute;top:0;left:0;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid #b8b8b8;box-sizing:border-box}
+.track-step[data-status=done] .track-dot{background:var(--on);border-color:var(--on)}
+.track-step[data-status=current] .track-dot{border-color:var(--on);border-width:4px}
+.track-step[data-status=current] .track-dot::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:2px solid var(--on);animation:track-pulse 1.6s ease-out infinite}
 .track-step[data-status=stopped] .track-dot{background:#181818;border-color:#181818}
 .track-step[data-status=skipped] .track-dot{border-style:dashed}
-.track-step[data-status=current] .track-dot::after{content:"";position:absolute;inset:-7px;border-radius:inherit;border:2px solid var(--state);animation:track-pulse 1.6s ease-out infinite}
-.gates .track-step{padding-top:40px}
-.gates .track-step::before{top:13px}
-.gates .track-dot{width:28px;height:28px;border-radius:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;line-height:1;color:#8a8a8a}
-.gates .track-step[data-status=done] .track-dot,.gates .track-step[data-status=stopped] .track-dot{color:#fff}
-.gates .track-step[data-status=current] .track-dot{color:var(--state);background:#fff}
-.track-title{display:block;font-weight:600;line-height:1.35}
-.gates .track-title{font-size:17px}
-.track-role{display:block;font-size:13px;color:#181818;margin:1px 0 3px}
+.track-kicker{display:block;font-size:12px;color:var(--state);font-weight:600}
+.track-title{display:block;font-weight:500;line-height:1.35;color:var(--muted)}
+.track-step[data-group=gate] .track-title{font-weight:600;color:#181818}
+.track-step[data-status=current] .track-title{color:#181818}
 .track-label{display:block;font-size:13px;color:var(--muted)}
 .track-step[data-status=current] .track-label{color:var(--state);font-weight:600}
 .track-step[data-status=stopped] .track-label{color:#181818;font-weight:600}
-.track-detail{display:block;font-size:13px;color:var(--muted);overflow-wrap:anywhere;margin-top:2px}
-@keyframes track-pulse{0%{transform:scale(.6);opacity:.7}100%{transform:scale(1.15);opacity:0}}
+@keyframes track-pulse{0%{transform:scale(.55);opacity:.7}100%{transform:scale(1.15);opacity:0}}
 @media(prefers-reduced-motion:reduce){.track-step[data-status=current] .track-dot::after{animation:none;opacity:.35}}
-.mini-track{display:flex;gap:3px;margin-top:6px;align-items:center}.mini-track span{width:11px;height:3px;background:var(--line)}
-.mini-track span.g{height:6px}.mini-track span.g:first-of-type,.mini-track span:nth-child(3),.mini-track span:nth-child(6){margin-left:5px}
-.mini-track span[data-status=done]{background:var(--state)}.mini-track span[data-status=current]{background:#8fb0dd}.mini-track span[data-status=stopped]{background:#181818}
+.activity-log{list-style:none;padding:0;margin:16px 0 0}.activity-log>li{border-top:1px solid var(--line);padding:13px 0}
+.activity-log p{margin:2px 0 0;font-size:14px;color:var(--muted);overflow-wrap:anywhere}
+.log-head{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap;font-size:14px}.log-head strong{font-weight:500}
+.mini-track{display:flex;gap:3px;margin-top:6px}.mini-track span{width:12px;height:3px;background:var(--line)}
+.mini-track span:nth-child(3),.mini-track span:nth-child(6){margin-left:5px}
+.mini-track span[data-status=done]{background:var(--soft)}.mini-track span[data-group=gate][data-status=done]{background:var(--state)}
+.mini-track span[data-status=current]{background:#8fb0dd}.mini-track span[data-status=stopped]{background:#181818}
 .summary-block{margin:4px 0 22px;max-width:72ch}.summary-block p{margin:0}.summary-text{font-size:18px;line-height:1.5;font-weight:500}
 .live-stamp{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .intro.top{margin-bottom:10px}.status-block{margin-bottom:0}
-@media(max-width:760px){.track{grid-template-columns:1fr;gap:10px}.zone-steps.n2,.zone-steps.n3{grid-template-columns:1fr}.track-step{padding:0 0 16px 26px}.track-step::before{top:0;bottom:0;left:5px;right:auto;width:2px;height:auto}.track-step:last-child::before{display:none}.gates .track-step{padding:0 0 16px 42px;min-height:44px}.gates .track-step::before{left:13px}.zone.gates{padding:12px 14px 4px}}
+:root{--soft:#9db4d6}
+@media(max-width:760px){.track-groups{display:none}.track{grid-template-columns:1fr}.track-step{padding:0 0 18px 32px}.track-step::before{top:0;bottom:0;left:7px;right:auto;width:2px;height:auto}.track-step:last-child::before{display:none}.track-kicker{display:inline;margin-right:8px}.track-title{display:inline}.track-kicker:empty,.track-step:not([data-group=gate]) .track-kicker{display:none}}
 `;

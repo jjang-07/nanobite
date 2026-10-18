@@ -1,9 +1,13 @@
 // Connect a coding agent to Nanobite, in either client and over either transport.
 //   npm run connect -- claude [http|stdio]   registers the server with Claude Code for this folder
 //   npm run connect -- codex  [http|stdio]   prints the block to paste into ~/.codex/config.toml
+//   npm run connect -- desktop               adds Nanobite to the Claude Desktop app (local stdio; restart the app)
 //   npm run connect -- remove                removes the Claude Code registration for this folder
 // HTTP talks to the running worker (npm start) at MCP_HTTP_PORT; stdio launches its own MCP process.
 import { spawnSync } from 'node:child_process';
+import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 export type Client = 'claude' | 'codex';
@@ -20,6 +24,23 @@ export interface Setup {
     notes: string[];
 }
 const NAME = 'nanobite';
+export interface DesktopEntry {
+    command: string;
+    args: string[];
+    env: Record<string, string>;
+}
+/**
+ * Claude Desktop launches local MCP servers itself, with no shell PATH and no working folder, so the
+ * entry uses an absolute Node path and an absolute database path. (A Desktop "connector" is a remote
+ * server reached from Anthropic's cloud and needs a public HTTPS address, which this demo does not have.)
+ */
+export function desktopEntry(env: SetupEnv & { nodePath: string }): DesktopEntry {
+    return { command: env.nodePath, args: [`--env-file-if-exists=${env.root}/.env`, `${env.root}/src/mcp/server.ts`], env: { CONTEXTPR_DB: `${env.root}/data/contextpr.db` } };
+}
+/** Adds or replaces only the nanobite server; every other setting and server is kept. */
+export function mergeDesktopConfig(config: Record<string, any>, entry: DesktopEntry): Record<string, any> {
+    return { ...config, mcpServers: { ...(config.mcpServers ?? {}), [NAME]: entry } };
+}
 export function agentSetup(client: Client, transport: Transport, env: SetupEnv): Setup {
     const url = `http://127.0.0.1:${env.port}/mcp`, envFile = `${env.root}/.env`, server = `${env.root}/src/mcp/server.ts`;
     if (transport === 'http' && env.token.length < 16)
@@ -39,6 +60,16 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     const [first = 'claude', second = 'http'] = process.argv.slice(2);
     const root = resolve(new URL('..', import.meta.url).pathname);
     const env = { root, port: Number(process.env.MCP_HTTP_PORT ?? 8788), token: process.env.MCP_HTTP_TOKEN?.trim() ?? '' };
+    if (first === 'desktop') {
+        const path = join(homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+        const current = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : {};
+        if (existsSync(path))
+            copyFileSync(path, `${path}.before-nanobite`);
+        writeFileSync(path, JSON.stringify(mergeDesktopConfig(current, desktopEntry({ ...env, nodePath: process.execPath })), null, 2) + '\n', { mode: 0o600 });
+        console.log(`Claude Desktop: ${NAME} added to ${path}${existsSync(`${path}.before-nanobite`) ? ' (previous config saved as .before-nanobite)' : ''}.`);
+        console.log('Quit and reopen Claude Desktop to load it. Keep `npm start` running; the worker drafts and sends the email.');
+        process.exit(0);
+    }
     if (first === 'remove') {
         const r = spawnSync('claude', ['mcp', 'remove', NAME, '-s', 'local'], { cwd: root, encoding: 'utf8' });
         console.log(r.status === 0 ? 'Removed the Claude Code registration for this folder.' : 'Nothing to remove.');

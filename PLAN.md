@@ -96,3 +96,11 @@ Still open: the physical checklist.
 - Primitive strips inline styles from its own stored display copy, but the delivered raw message keeps all of them; the decoded delivered HTML was rendered at desktop and 390px widths. A second style preview went to the approver and the account owner.
 - Tracker: the three gates now form their own zone (gray band, heavy top rule, numbered square markers, role lines), distinct from Request and Delivery.
 - 127 tests pass; typecheck clean. Claude Code re-registered as `nanobite`; preflight reports ready.
+
+## Simpler tracker, email polish, agent-only requests, Claude Desktop (2026-10-17, user request)
+
+- Email: labels shortened to Summary, Exact answer and Flagged for you; 36px between sections; Details hidden by default, opening on tap where the mail app supports it and staying hidden in Gmail and Outlook (they strip interactive elements). Preview sent to the account owner only.
+- Request page: Request context section removed; the gate summary section removed. The tracker is one line again: soft blue for Request and Delivery, vivid state blue for the three gates, and only a title and short status per step. Times and step details moved to an Activity log at the bottom; raw events moved into Technical evidence.
+- Requests now come only from agents: the Inbox request form, New request button and the dashboard's request endpoint were removed. The dashboard server test now creates its request through the MCP tool function and asserts the endpoint is gone.
+- Claude Desktop: what we built is an MCP server, not a connector. Desktop connectors are remote servers reached from Anthropic's cloud and need a public HTTPS address, which this loopback demo does not have. Desktop can launch our stdio server locally from its config. `npm run connect -- desktop` backs up the config, adds only `nanobite` with an absolute Node path and database path, and keeps every other setting. Verified by launching the configured command from `/` with no PATH: initialize and tools/list returned all four tools. Desktop must be restarted to load it.
+- 130 tests pass; typecheck clean.
