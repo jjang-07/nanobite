@@ -10,12 +10,19 @@ function message(purpose = 'approval'): LocalInboxMessage { return { id: 'in_app
 const config = loadConfig({});
 test('Inbox includes the complete review table and no request form, since agents file requests', () => {
     const html = renderInbox([sample()], { csrfToken: 'safe-token', config });
-    for (const value of ['cpr_demo', 'awaiting_approval', 'sdk/retries', '/pr/cpr_demo', 'Requester', 'Decision', 'Outcome', 'Updated', 'Local inbox', 'Ollama', 'Synthetic fixture demo'])
+    for (const value of ['cpr_demo', 'awaiting_approval', 'sdk/retries', '/pr/cpr_demo', 'Requester', 'Decision', 'Outcome', 'Updated', 'Ollama', 'Synthetic fixture demo'])
         assert.ok(html.includes(value), value);
     assert.doesNotMatch(html, /action="\/requests"|name="question"/);
     assert.doesNotMatch(html, /<th[^>]*>(Responder|Removals)<\/th>/, 'the Inbox leaves the responder and removal counts to the request page');
     assert.doesNotMatch(html, /<meta[^>]+http-equiv="refresh"/i);
     assert.match(html, /dirty/);
+});
+test('header shows the lowercase nanobite logo and no unlinked mail-mode label', () => {
+    for (const mail of ['local', 'primitive']) {
+        const html = renderInbox([], { config: loadConfig({ MAIL_PROVIDER: mail, PRIMITIVE_API_KEY: 'test', REQUESTER_IDENTITY: 'a@x.primitive.email', RESPONDER_IDENTITY: 'b@x.primitive.email', APPROVER_EMAIL: 'c@x.primitive.email' }) });
+        assert.match(html, /<a class="brand" href="\/">nanobite<\/a>/);
+        assert.doesNotMatch(html, /Email inbox|Local inbox/);
+    }
 });
 test('PR detail contains exact content, audit data, line changes and approval actions', () => {
     const pr = sample();
