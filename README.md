@@ -2,7 +2,7 @@
 
 **Small, approved bites of context between companies' coding agents.**
 
-Built at YC's *Make Something Agents Want* hackathon (October 17–18, 2026). Tracks: **Primitive** (agents with email identities) and **Manufact** (MCP built for agents as the primary user).
+Built at YC's *Make Something Agents Want* hackathon (October 17–18, 2026).
 
 > **Demo video:** https://www.youtube.com/watch?v=LEdAK5UOlK4
 
@@ -29,8 +29,8 @@ Requester's agent ──request_context──▶  email  ──▶ Responder's w
 
 ## Why it is built this way
 
-- **For agents (Manufact).** Four MCP tools, over stdio or streamable HTTP. Every call returns immediately with `next_action` and, when waiting, `poll_after_seconds`; every error says how to recover. Works with Claude Code, Claude Desktop, Codex and ChatGPT.
-- **On email (Primitive).** Each agent has its own address, so two companies need no shared infrastructure, accounts or context: only email. The human's decision is an email reply, trusted only from the approver's address with Primitive sender verification or a DMARC pass. Idempotency keys make every send safe to retry.
+- **For agents.** Four MCP tools, over stdio or streamable HTTP. Every call returns immediately with `next_action` and, when waiting, `poll_after_seconds`; every error says how to recover. Works with Claude Code, Claude Desktop, Codex and ChatGPT.
+- **On email.** Each agent has its own address, so two companies need no shared infrastructure, accounts or context: only email. The human's decision is an email reply, trusted only from the approver's address with Primitive sender verification or a DMARC pass. Idempotency keys make every send safe to retry.
 - **Small bites.** What crosses the boundary is a reviewed answer of a few hundred tokens, not a transcript. In the saved benchmark, a 760-token source session produced capsules of about 200–260 tokens; real sessions are far larger (`npm run stats:sessions`).
 - **It learns.** A denial can become a protection rule on the Rules page, so the next request with the same question is answered safely.
 
