@@ -26,9 +26,12 @@ export function applyRules(text: string, rules: readonly Rule[]): {
     }
     for (const r of rules.filter(r => r.kind === 'regex'))
         text = text.replace(new RegExp(r.pattern, 'gi'), () => hit(r.placeholder));
-    for (const r of rules.filter(r => r.kind === 'sentence'))
-        text = text.split(/((?<=[.!?])\s+|\n)/).map(sentence => { if (!sentence.toLowerCase().includes(r.pattern.toLowerCase()))
+    for (const r of rules.filter(r => r.kind === 'sentence')) {
+        // Whole words only: "CTO" must not remove a sentence about a constructor.
+        const word = new RegExp(`${/^\w/.test(r.pattern) ? '(?<!\\w)' : ''}${escape(r.pattern)}${/\w$/.test(r.pattern) ? '(?!\\w)' : ''}`, 'i');
+        text = text.split(/((?<=[.!?])\s+|\n)/).map(sentence => { if (!word.test(sentence))
             return sentence; const leading = sentence.match(/^\s*/)?.[0] ?? ''; return `${leading}[sentence removed: ${hit(r.placeholder)}]`; }).join('');
+    }
     return { text, removals: [...counts].map(([placeholder, count]) => ({ placeholder, count })) };
 }
 export function loadRules(db: DatabaseSync, responderIdentity: string): Rule[] { return db.prepare('SELECT kind,pattern,placeholder FROM denylist WHERE responder_identity=? AND enabled=1 ORDER BY id').all(responderIdentity) as unknown as Rule[]; }

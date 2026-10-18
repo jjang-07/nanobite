@@ -17,6 +17,13 @@ test('sentence rule removes the whole sentence', () => {
     const r = applyRules('Fix: pass one key. They do about 40k charges a day and the CTO is furious. Done.', [...rules]);
     assert.equal(r.text, 'Fix: pass one key. [sentence removed: [internal]] Done.');
 });
+test('sentence rules match whole words, not parts of longer words', () => {
+    const words = [{ kind: 'sentence', pattern: 'CTO', placeholder: '[internal]' }, { kind: 'sentence', pattern: 'pricing', placeholder: '[internal]' }] as const;
+    const kept = 'Pass the key to the client constructor. The retry factor is 2. Repricing runs nightly.';
+    assert.equal(applyRules(kept, [...words]).text, kept);
+    assert.equal(applyRules('Their CTO is furious. Done.', [...words]).text, '[sentence removed: [internal]] Done.');
+    assert.equal(applyRules('Keep this. Pricing (internal) changes soon.', [...words]).text, 'Keep this. [sentence removed: [internal]]');
+});
 test('the fix line survives intact', () => {
     const fix = 'Upgrade to 2.4.0 and call withRetry(fn, { preserveIdempotencyKey: true }) for Northwind-style timeouts.';
     const r = applyRules(fix, [...rules]);
