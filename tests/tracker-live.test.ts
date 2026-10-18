@@ -16,25 +16,24 @@ function pr(state: string, patch: Record<string, unknown> = {}, kinds: string[] 
 const statuses = (p: ReturnType<typeof pr>) => trackSteps(p.row, p.events, config).map(s => `${s.key}:${s.status}`).join(' ');
 test('tracker shows each stage like a delivery timeline, with the three gates labeled', () => {
     const steps = trackSteps(pr('queued').row, [], config);
-    assert.deepEqual(steps.map(s => s.key), ['asked', 'received', 'rules', 'minimize', 'human', 'delivered', 'outcome']);
+    assert.deepEqual(steps.map(s => s.key), ['asked', 'received', 'rules', 'minimize', 'human', 'delivered']);
     assert.deepEqual(steps.filter(s => s.gate).map(s => `${s.gate}:${s.title}`), ['1:Rules', '2:Minimize', '3:Human']);
-    assert.equal(statuses(pr('queued')), 'asked:current received:waiting rules:waiting minimize:waiting human:waiting delivered:waiting outcome:waiting');
-    assert.equal(statuses(pr('drafting', {}, ['request_sent', 'received', 'sources_matched'])), 'asked:done received:done rules:done minimize:current human:waiting delivered:waiting outcome:waiting');
+    assert.equal(statuses(pr('queued')), 'asked:current received:waiting rules:waiting minimize:waiting human:waiting delivered:waiting');
+    assert.equal(statuses(pr('drafting', {}, ['request_sent', 'received', 'sources_matched'])), 'asked:done received:done rules:done minimize:current human:waiting delivered:waiting');
     const waiting = pr('awaiting_approval', { draft_answer: 'Use one key.', removals: JSON.stringify([{ placeholder: '[another customer]', count: 3 }]) }, ['request_sent', 'received', 'sources_matched', 'rules_applied', 'drafted', 'approval_sent']);
-    assert.equal(statuses(waiting), 'asked:done received:done rules:done minimize:done human:current delivered:waiting outcome:waiting');
+    assert.equal(statuses(waiting), 'asked:done received:done rules:done minimize:done human:current delivered:waiting');
     const steps2 = trackSteps(waiting.row, waiting.events, config);
     assert.match(steps2.find(s => s.key === 'human')!.label, /Waiting for TK/);
     assert.match(steps2.find(s => s.key === 'rules')!.detail, /\[another customer\] ×3/);
     const reported = pr('reported', { draft_answer: 'x', decision: 'approve', outcome_result: 'passed' }, ['request_sent', 'received', 'sources_matched', 'drafted', 'decision', 'delivered', 'outcome']);
-    assert.equal(statuses(reported), 'asked:done received:done rules:done minimize:done human:done delivered:done outcome:done');
-    assert.match(trackSteps(reported.row, reported.events, config).find(s => s.key === 'outcome')!.detail, /passed/i);
+    assert.equal(statuses(reported), 'asked:done received:done rules:done minimize:done human:done delivered:done');
 });
 test('tracker marks a stop clearly: denial by TK, no source, automatic approval', () => {
     const denied = pr('denied', { draft_answer: 'x', decision: 'deny', decision_reason: 'mentions an unreleased version' }, ['request_sent', 'received', 'sources_matched', 'drafted', 'decision']);
-    assert.equal(statuses(denied), 'asked:done received:done rules:done minimize:done human:stopped delivered:skipped outcome:skipped');
+    assert.equal(statuses(denied), 'asked:done received:done rules:done minimize:done human:stopped delivered:skipped');
     assert.match(trackSteps(denied.row, denied.events, config).find(s => s.key === 'human')!.detail, /unreleased/);
     const none = pr('denied', { decision: 'deny', decision_reason: 'no_sources' }, ['request_sent', 'received']);
-    assert.equal(statuses(none), 'asked:done received:done rules:stopped minimize:skipped human:skipped delivered:skipped outcome:skipped');
+    assert.equal(statuses(none), 'asked:done received:done rules:stopped minimize:skipped human:skipped delivered:skipped');
     const auto = pr('delivered', { draft_answer: 'x', decision: 'auto' }, ['request_sent', 'received', 'sources_matched', 'drafted', 'auto_merged', 'delivered']);
     assert.match(trackSteps(auto.row, auto.events, config).find(s => s.key === 'human')!.detail, /rule/i);
 });
@@ -45,7 +44,11 @@ test('detail page and Inbox carry the tracker and update in place, never by relo
     assert.match(html, /Gate 1/); assert.match(html, /Gate 3/);
     // One clean line: soft blue for Request and Delivery, vivid blue for the three gates; no fine print under steps.
     const track = html.slice(html.indexOf('class="track"'), html.indexOf('</ol>', html.indexOf('class="track"')));
-    assert.deepEqual([...track.matchAll(/data-group="(\w+)"/g)].map(m => m[1]), ['request', 'request', 'gate', 'gate', 'gate', 'delivery', 'delivery']);
+    // Four points on the line; the three gates are listed inside the one gates checkpoint.
+    assert.deepEqual([...track.matchAll(/<li class="track-step[^"]*" data-anim-key="(step-\w+)"/g)].map(m => m[1]), ['step-asked', 'step-received', 'step-gates', 'step-delivered']);
+    assert.deepEqual([...track.matchAll(/<li class="gate-sub" data-anim-key="(step-\w+)" data-status="(\w+)"/g)].map(m => `${m[1]}:${m[2]}`), ['step-rules:done', 'step-minimize:done', 'step-human:current']);
+    assert.match(track, /data-anim-key="step-gates" data-group="gate" data-status="current"/);
+    assert.doesNotMatch(html, /Outcome<\/span>|Waiting for Yunha's test result/);
     assert.doesNotMatch(track, /track-detail|Masked|Approval email sent/);
     // The details live in the Activity log at the bottom of the page instead.
     const log = html.slice(html.indexOf('Activity log'));
@@ -104,7 +107,7 @@ test('the page script swaps in fresh HTML when the version changes, and never wh
 test('a step that just completed is marked for the completion animation; nothing animates on first load', async () => {
     const p = pr('awaiting_approval', { draft_answer: 'Use one key.' }, ['request_sent']);
     const html = renderPr(p.row, p.events, { config });
-    assert.match(html, /<li class="track-step" data-anim-key="step-human"/);
+    assert.match(html, /<li class="gate-sub" data-anim-key="step-human"/);
     assert.match(renderInbox([p.row], { config }), /data-anim-key="cpr_t1:4"/);
     const script = html.match(/<script>([\s\S]*?)<\/script>/)![1];
     const el = (key: string, status: string) => { const classes: string[] = []; return { dataset: { animKey: key, status }, classList: { add: (c: string) => classes.push(c) }, classes }; };
