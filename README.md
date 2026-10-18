@@ -37,7 +37,7 @@ MAIL_PROVIDER=primitive
 PRIMITIVE_API_KEY=prim_...                                # Primitive dashboard, Settings, API keys
 REQUESTER_IDENTITY=yunha-agent@<subdomain>.primitive.email
 RESPONDER_IDENTITY=sdk-help@<subdomain>.primitive.email
-APPROVER_EMAIL=<the address TK reads on his phone>
+APPROVER_EMAIL=<the address TK reads on their phone>
 POLL_WAIT_SECONDS=3
 ```
 
@@ -71,16 +71,27 @@ Every request has an audit trail: source identifiers, rule removal counts, draft
 
 ## Connect a coding agent
 
-The MCP server is a separate process that reads and writes SQLite; the application worker performs drafting and message delivery. Keep `npm start` running while an agent uses the tools.
+The agent is the customer: these four tools are its only interface. The worker does the drafting and email; the MCP server only reads and writes the shared SQLite database, so every call returns immediately. Keep `npm start` running while an agent uses the tools.
 
-- `request_context` returns immediately with a request ID and a later polling suggestion.
-- `get_context_request` returns progress or a delivered capsule.
+- `request_context` returns immediately with `pending`, a request ID, and `poll_after_seconds`, so the agent keeps working while a human at the other company decides.
+- `get_context_request` returns progress or the delivered capsule, labeled `EXTERNAL_DATA` and `NOT_INSTRUCTIONS`.
 - `list_context_requests` recovers existing request IDs.
 - `report_outcome` records a tested result after delivery.
 
-The repository includes `.mcp.json` for a client launched in this directory and `codex.config.example.toml` for Codex. In the Codex example, replace all `/ABS/PATH/nanobite` values with the actual checkout path. Use the same `.env`, working directory, and `CONTEXTPR_DB` as the worker. The MCP process must not start a second worker.
+Every response carries `next_action`, and every error says how to recover.
 
-Codex registration and a four-tool stdio handshake were checked locally. A separate laptop, Claude Code installation, and phone-based review were not verified.
+**Over HTTP (recommended).** When `MCP_HTTP_TOKEN` is set in `.env`, `npm start` also serves the same tools at `http://127.0.0.1:8788/mcp` using streamable HTTP. Any MCP client can connect with the bearer token; the server is stateless, so many agents can share it. It binds to loopback and checks Host and Origin. To reach it from another machine, put it behind a tunnel or proxy and add that hostname to `MCP_HTTP_ALLOWED_HOSTS`; the token is still required.
+
+```sh
+# Claude Code
+claude mcp add --transport http contextpr http://127.0.0.1:8788/mcp --header "Authorization: Bearer $MCP_HTTP_TOKEN"
+# Codex: copy Option A from codex.config.example.toml into ~/.codex/config.toml, then
+export CONTEXTPR_MCP_TOKEN=$MCP_HTTP_TOKEN
+```
+
+**Over stdio.** `.mcp.json` launches `src/mcp/server.ts` for a client started in this directory, and Option B in `codex.config.example.toml` does the same for Codex. Use the same `.env` and `CONTEXTPR_DB` as the worker. The MCP process never starts a second worker.
+
+Both transports serve one shared tool definition, verified by tests. The HTTP endpoint was also exercised live with Primitive email; see PLAN.md.
 
 ## Rehearse the red-to-green fix
 
@@ -130,7 +141,7 @@ ANTHROPIC_API_KEY= MODEL_PROVIDER=ollama npm run benchmark
 
 **Benchmark human actions are simulated.** The harness first proves that absent approval blocks delivery, then submits an explicit simulated approval or full replacement. Timing includes model work and immediate simulated review; it does not measure human response time. Model prompt/output counts, source/capsule counts, and character counts are kept separate.
 
-The saved [benchmark.md](benchmark.md) is a 2026-10-17 run with real `claude-opus-5-5` drafting. All three workflow checks passed, with request-to-capsule observations of about 4 to 8 seconds. Source and capsule token counts come from Anthropic `countTokens`: the synthetic TK session is 760 tokens and the capsules are 150 to 272 tokens. That 3 to 5 times reduction reflects a deliberately short fixture, not a real debugging session, so do not quote it as typical compression. An earlier local `qwen3:4b` run also passed all three checks; its fix-location answer was incomplete. A workflow pass is not a quality certification.
+The saved [benchmark.md](benchmark.md) is a 2026-10-17 run with real `claude-opus-5-5` drafting. All three workflow checks passed, with request-to-capsule observations of about 4 to 7 seconds. Source and capsule token counts come from Anthropic `countTokens`: the synthetic TK session is 760 tokens and the capsules are about 200 to 260 tokens (about 500 to 660 characters). That small reduction reflects a deliberately short fixture, not a real debugging session. For the pitch, compare against real sessions with `npm run stats:sessions`, in characters. An earlier local `qwen3:4b` run also passed all three checks; its fix-location answer was incomplete. A workflow pass is not a quality certification.
 
 ## Restart or reset
 

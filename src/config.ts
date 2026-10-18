@@ -17,6 +17,10 @@ export interface Config {
     DASHBOARD_PUBLIC_URL: string;
     POLL_WAIT_SECONDS: number;
     TRANSCRIPTS_DIR: string;
+    /** Empty disables the HTTP MCP endpoint; stdio MCP is always available. */
+    MCP_HTTP_TOKEN: string;
+    MCP_HTTP_PORT: number;
+    MCP_HTTP_ALLOWED_HOSTS: string[];
 }
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     const mail = env.MAIL_PROVIDER ?? 'local', model = env.MODEL_PROVIDER ?? 'ollama';
@@ -45,6 +49,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         throw new Error('Invalid DASHBOARD_PORT');
     if (!Number.isInteger(poll) || poll < 0 || poll > 30)
         throw new Error('Invalid POLL_WAIT_SECONDS (0–30)');
+    const mcpPort = Number(env.MCP_HTTP_PORT ?? 8788), mcpToken = env.MCP_HTTP_TOKEN?.trim() ?? '';
+    if (!Number.isInteger(mcpPort) || mcpPort < 1 || mcpPort > 65535 || mcpPort === port)
+        throw new Error('Invalid MCP_HTTP_PORT: use a free port different from DASHBOARD_PORT');
+    if (mcpToken && mcpToken.length < 16)
+        throw new Error('MCP_HTTP_TOKEN must be at least 16 characters, or empty to disable the HTTP MCP endpoint');
     const ollama = env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434';
     let url: URL;
     try {
@@ -55,5 +64,5 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     }
     if (!['http:', 'https:'].includes(url.protocol) || !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) || url.username || url.password)
         throw new Error('OLLAMA_BASE_URL must use a local loopback server');
-    return { MAIL_PROVIDER: mail, MODEL_PROVIDER: model, OLLAMA_BASE_URL: ollama.replace(/\/$/, ''), OLLAMA_MODEL: env.OLLAMA_MODEL ?? '', REQUESTER_IDENTITY: values.REQUESTER_IDENTITY, RESPONDER_IDENTITY: values.RESPONDER_IDENTITY, APPROVER_EMAIL: values.APPROVER_EMAIL, APPROVER_NAME: env.APPROVER_NAME ?? 'TK', PRIMITIVE_API_KEY: env.PRIMITIVE_API_KEY ?? '', PRIMITIVE_API_KEY_REQUESTER: env.PRIMITIVE_API_KEY_REQUESTER ?? '', PRIMITIVE_API_KEY_RESPONDER: env.PRIMITIVE_API_KEY_RESPONDER ?? '', ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY ?? '', ANTHROPIC_MODEL: env.ANTHROPIC_MODEL ?? 'claude-opus-5-5', CONTEXTPR_DB: env.CONTEXTPR_DB ?? './data/contextpr.db', DASHBOARD_PORT: port, DASHBOARD_PUBLIC_URL: env.DASHBOARD_PUBLIC_URL ?? `http://localhost:${port}`, POLL_WAIT_SECONDS: poll, TRANSCRIPTS_DIR: env.TRANSCRIPTS_DIR ?? './demo/fixtures' };
+    return { MAIL_PROVIDER: mail, MODEL_PROVIDER: model, OLLAMA_BASE_URL: ollama.replace(/\/$/, ''), OLLAMA_MODEL: env.OLLAMA_MODEL ?? '', REQUESTER_IDENTITY: values.REQUESTER_IDENTITY, RESPONDER_IDENTITY: values.RESPONDER_IDENTITY, APPROVER_EMAIL: values.APPROVER_EMAIL, APPROVER_NAME: env.APPROVER_NAME ?? 'TK', PRIMITIVE_API_KEY: env.PRIMITIVE_API_KEY ?? '', PRIMITIVE_API_KEY_REQUESTER: env.PRIMITIVE_API_KEY_REQUESTER ?? '', PRIMITIVE_API_KEY_RESPONDER: env.PRIMITIVE_API_KEY_RESPONDER ?? '', ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY ?? '', ANTHROPIC_MODEL: env.ANTHROPIC_MODEL ?? 'claude-opus-5-5', CONTEXTPR_DB: env.CONTEXTPR_DB ?? './data/contextpr.db', DASHBOARD_PORT: port, DASHBOARD_PUBLIC_URL: env.DASHBOARD_PUBLIC_URL ?? `http://localhost:${port}`, POLL_WAIT_SECONDS: poll, TRANSCRIPTS_DIR: env.TRANSCRIPTS_DIR ?? './demo/fixtures', MCP_HTTP_TOKEN: mcpToken, MCP_HTTP_PORT: mcpPort, MCP_HTTP_ALLOWED_HOSTS: (env.MCP_HTTP_ALLOWED_HOSTS ?? '').split(',').map(s => s.trim()).filter(Boolean) };
 }

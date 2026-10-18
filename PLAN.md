@@ -61,3 +61,12 @@ The user created a Primitive account (`fair-fly.primitive.email`, developer plan
 Phone rehearsal: the account owner replied `Approve` from Outlook on a phone. Primitive verified the sender (SPF, DKIM and DMARC pass), but the worker silently ignored it because reply senders arrive as the raw From header, `Name <address>`. Fixed test-first: Primitive addresses are reduced to the bare address when mapped and again in the trust check, and a display name containing a different address is still rejected. After a restart the waiting reply was accepted and the capsule delivered. 101 tests pass.
 
 Still open: the physical checklist.
+
+## Cast rename, MCP over HTTP, honest size claim (2026-10-17, user request)
+
+- Cast renamed at the user's request: Alice is now Yunha (requester, Codex) and Bob is now TK (approver, phone). Identities, fixture (`demo/fixtures/tk-session.jsonl`), demo folder (`demo/yunha-app`), tests, README, PRODUCT and HANDOVER were updated; gendered pronouns for both were replaced with names or neutral words. This log keeps earlier entries as written.
+- MCP over streamable HTTP: `npm start` serves the same four tools at `http://127.0.0.1:8788/mcp` when `MCP_HTTP_TOKEN` is set. One tool definition (`src/mcp/register.ts`) backs both stdio and HTTP. Stateless SDK handler, bearer token compared in constant time, loopback bind, Host and Origin checks. Tests cover refused token, refused origin, tool list, a tool call into the shared database, and configuration rules.
+- Live check of the HTTP endpoint with Primitive email: a tokenless call returned 401; `request_context` over HTTP returned `pending`; the approval email reached an internal approver address, the approve reply was sent through Primitive, the capsule was delivered, and `get_context_request` over HTTP returned it. Claude Code registered the endpoint (`claude mcp add --transport http`) and reported it Connected; the registration was removed afterward.
+- Size claim: `npm run stats:sessions` measures real local Claude Code sessions (text only, thinking excluded, aggregates only, nothing sent). On this laptop: 61 sessions, median 52,403 characters. HANDOVER's pitch, demo step and checklist now use this in characters instead of the unsupported "40,000 tokens".
+- Benchmark regenerated with the renamed fixture: 3 passed with `claude-opus-5-5`; capsules about 500 to 660 characters.
+- 105 tests pass; typecheck clean.

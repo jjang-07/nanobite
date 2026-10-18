@@ -1,6 +1,13 @@
+# Option A (recommended): connect to the running worker over HTTP. Start the worker first with `npm start`.
+# Export the token from your .env before starting Codex: export CONTEXTPR_MCP_TOKEN=<MCP_HTTP_TOKEN value>
 [mcp_servers.contextpr]
-command = "node"
-args = ["--env-file-if-exists=/ABS/PATH/nanobite/.env", "/ABS/PATH/nanobite/src/mcp/server.ts"]
-cwd = "/ABS/PATH/nanobite"
-startup_timeout_sec = 20
-tool_timeout_sec = 60
+url = "http://127.0.0.1:8788/mcp"
+bearer_token_env_var = "CONTEXTPR_MCP_TOKEN"
+
+# Option B: launch the stdio MCP server as a subprocess. Replace /ABS/PATH with the checkout path.
+# [mcp_servers.contextpr]
+# command = "node"
+# args = ["--env-file-if-exists=/ABS/PATH/.env", "/ABS/PATH/src/mcp/server.ts"]
+# cwd = "/ABS/PATH"
+# startup_timeout_sec = 20
+# tool_timeout_sec = 60

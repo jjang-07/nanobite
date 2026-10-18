@@ -72,10 +72,10 @@ A startup's coding agent hits a bug mid-session and asks the vendor's agent. The
 
 ### The scenario (this is the demo and the pitch)
 
-- **Yunha** is an engineer at a startup, working in **Codex**. She is integrating **Acme Payments**. Her concurrent-retry test produces a duplicate charge.
-- **TK** is a solutions engineer at **Acme Payments**, working in **Claude Code**. Two weeks ago he debugged this exact bug for another customer, Northwind, in his own session: the Acme SDK's retry wrapper regenerates the idempotency key on retry in v2.3. It was never written into the docs. It exists only in TK's transcript.
+- **Yunha** is an engineer at a startup, working in **Codex**. Yunha is integrating **Acme Payments**. Yunha's concurrent-retry test produces a duplicate charge.
+- **TK** is a solutions engineer at **Acme Payments**, working in **Claude Code**. Two weeks ago TK debugged this exact bug for another customer, Northwind, in their own session: the Acme SDK's retry wrapper regenerates the idempotency key on retry in v2.3. It was never written into the docs. It exists only in TK's transcript.
 - Today, Yunha would file a support ticket and get a doc link tomorrow.
-- With ContextPR: Yunha's agent calls `request_context`. ContextPR emails Acme's SDK-help agent, which is a Primitive address. Acme's side indexes TK's transcripts, finds the session, drafts a minimal answer, strips Northwind's name and the ticket number (gate 1), keeps only what answers the question (gate 2), and emails TK the exact draft (gate 3). TK's phone buzzes. He deletes one line about unreleased v2.5 and replies `approve`. The capsule is emailed back to Yunha's agent identity, ContextPR stores it, Yunha's agent picks it up on its next `get_context_request`, applies it, and the test goes green. TK spent one click. Yunha's agent never sat idle: `request_context` returned `pending` and it worked on other tasks meanwhile.
+- With ContextPR: Yunha's agent calls `request_context`. ContextPR emails Acme's SDK-help agent, which is a Primitive address. Acme's side indexes TK's transcripts, finds the session, drafts a minimal answer, strips Northwind's name and the ticket number (gate 1), keeps only what answers the question (gate 2), and emails TK the exact draft (gate 3). TK's phone buzzes. TK deletes one line about unreleased v2.5 and replies `approve`. The capsule is emailed back to Yunha's agent identity, ContextPR stores it, Yunha's agent picks it up on its next `get_context_request`, applies it, and the test goes green. TK spent one click. Yunha's agent never sat idle: `request_context` returned `pending` and it worked on other tasks meanwhile.
 
 ### The three gates, in order
 
@@ -91,7 +91,7 @@ Every request is a **Context PR**: who asked, on whose behalf, what question, wh
 
 ### "Approve always" is auto-merge, not access control
 
-After TK approves a topic once or twice, he can reply `approve always`. That creates a **rule** scoped to exactly one requester identity and one topic tag. Future Context PRs matching that rule skip gate 3, ship immediately, and TK gets a **notification email** carrying the full payload and the instruction "reply `revoke` to delete this rule." Every capsule is still a Context PR in the Inbox. TK still sees every word that left, just after the fact for topics he trusts. There are no roles, no view/comment/edit levels, no delegation, no wildcards, no team-wide grants.
+After TK approves a topic once or twice, TK can reply `approve always`. That creates a **rule** scoped to exactly one requester identity and one topic tag. Future Context PRs matching that rule skip gate 3, ship immediately, and TK gets a **notification email** carrying the full payload and the instruction "reply `revoke` to delete this rule." Every capsule is still a Context PR in the Inbox. TK still sees every word that left, just after the fact for topics TK trusts. There are no roles, no view/comment/edit levels, no delegation, no wildcards, no team-wide grants.
 
 ### Non-blocking is the heart of it
 
@@ -101,12 +101,12 @@ After TK approves a topic once or twice, he can reply `approve always`. That cre
 
 - **Why not a support ticket or Slack?** A ticket is a day and returns a doc link. Slack is ten minutes of TK writing. ContextPR is one tap, and the answer arrives as a tested fix inside the agent's session.
 - **Why not just connect the two agents and let them talk?** Why not just push to main. Git works without pull requests. PRs exist because humans want to see what lands and want a record. Also: TK's agent cannot decide what to share, because the policy is in TK's head. The transcript says "Northwind" but nothing in it says Northwind is confidential. An LLM deciding alone will over-share or under-share, and across companies one wrong guess is an incident.
-- **Isn't human approval a bottleneck?** The requesting agent gets `pending` and keeps working. TK taps once from his phone. The second time on the same topic, `approve always` makes it zero. The bottleneck was never TK existing; it was TK writing and Yunha relaying. Both are gone.
+- **Isn't human approval a bottleneck?** The requesting agent gets `pending` and keeps working. TK taps once from a phone. The second time on the same topic, `approve always` makes it zero. The bottleneck was never TK existing; it was TK writing and Yunha relaying. Both are gone.
 - **Why cross-company and not teammates?** Inside one team there is no hard boundary: shared workspaces work, Slack works, so exact-payload approval is merely nicer. Approval becomes necessary only where the alternatives are impossible, and that is a company boundary. Email is also the only identity two companies share: no shared Slack, repo, or identity provider.
 - **Why email, and why Primitive?** Email is the universal cross-org protocol. Primitive gives each agent an address and lets inbound mail be read by code, which makes the Primitive inbox the agent's body, not just its mailbox. Every ask in the system is "send mail, await reply," which is exactly Primitive's brief.
 - **Why not commit TK's notes to the repo?** They were never written down. The source is the session transcript. That is the whole point.
 - **Anthropic or Cursor could build this.** Not across two vendors and two companies. Yunha is on Codex, TK is on Claude Code, and they work for different employers. That is on screen.
-- **What if TK misses something when approving?** Rules already removed the deterministic stuff before he saw the draft. TK only has to catch judgment. Each gate covers the one before it.
+- **What if TK misses something when approving?** Rules already removed the deterministic stuff before TK saw the draft. TK only has to catch judgment. Each gate covers the one before it.
 
 ### Two analogies, use both
 
@@ -156,16 +156,20 @@ If a judge asks about any of these, answer in one sentence from the right-hand c
 1. **Red.** On the left laptop, Yunha's test runs. One concurrent retry, two charges. Red.
 2. **Ask, and keep working.** Yunha's agent calls `request_context`. The response on screen says `pending` with a `next_action`. The agent visibly moves to the next failing test.
 3. **TK's phone.** TK's phone, on stage, buzzes with the Primitive email. The draft already shows `[another customer]` where Northwind was. TK deletes the line about unreleased v2.5 and replies `approve`. Twenty seconds.
-4. **Green.** The capsule lands. Yunha's agent calls `get_context_request`, applies the one-line fix, reruns the test. Green. On screen: tokens in TK's session versus tokens in the capsule (real numbers from the benchmark).
+4. **Green.** The capsule lands. Yunha's agent calls `get_context_request`, applies the one-line fix, reruns the test. Green. On screen, in characters, not tokens: a typical real Claude Code session on our laptops is 52,403 characters (median of 61, from `npm run stats:sessions`); the answer TK approved is about 500. The demo's TK session is a short synthetic fixture, so never present its own size as typical.
 5. **The Inbox.** Close on the dashboard: who asked, what left, who approved, what the rules removed, what TK changed, whether it fixed the test.
 
-**Optional if there is time:** Yunha's agent asks a second question on the same topic. TK already replied `approve always`. It auto-merges while TK is "in a meeting" and his phone gets the notification with the payload.
+**Optional if there is time:** Yunha's agent asks a second question on the same topic. TK already replied `approve always`. It auto-merges while TK is "in a meeting" and TK's phone gets the notification with the payload.
 
 **Stage line:** "Connected agents decide what to share. ContextPR lets the human decide, with one click instead of a written answer."
 
 ## 7. Pitch, tagline, and judge Q&A
 
-**Pitch (three sentences):** Your coding agent just burned 40,000 tokens on a duplicate-charge bug that your payment vendor's engineer fixed for another customer two weeks ago, in a session that never became docs. ContextPR lets your agent ask the vendor's agent for exactly what it is missing, and the answer ships only after their engineer approves the exact words in an email reply. Clean rooms did this for data. We do it for the knowledge in an engineer's head.
+**Pitch (three sentences):** Your coding agent is stuck on a duplicate-charge bug that your payment vendor's engineer already fixed for another customer, in a session that never became docs. ContextPR lets your agent ask the vendor's agent for exactly what it is missing, and the answer ships only after their engineer approves the exact words in an email reply. A typical session on our laptops holds 52,000 characters; the answer that ships is about 500, and a human read every one of them.
+
+**Closer:** Clean rooms did this for data. We do it for the knowledge in an engineer's head.
+
+**Where the numbers come from:** 52,403 is the median of 61 real Claude Code sessions measured locally by `npm run stats:sessions` (text only, thinking excluded). The capsule lengths are in `benchmark.md`. Rerun the script on the demo laptop and use its number. Never quote the synthetic fixture's size as typical.
 
 **Tagline:** Pull the missing context, not the whole workspace.
 
@@ -250,7 +254,7 @@ Everything in this part was checked against live documentation on October 17, 20
                                               Primitive  api.primitive.dev/v1
                                    yunha-agent@<startup>.primitive.email   (requester identity)
                                    sdk-help@<acme>.primitive.email         (responder identity)
-                                   TK's real mailbox on his phone          (approver)
+                                   TK's real mailbox on a phone            (approver)
 ```
 
 **Two processes, one database.** The MCP server is spawned by Codex over stdio and only touches SQLite, so tool calls return in milliseconds and never need network. The worker process does all email and LLM work. They share `data/contextpr.db` in WAL mode.
@@ -1270,7 +1274,7 @@ Run → FAIL. Implement per section 21. Run → PASS.
 - [ ] Organizer confirmed multi-track entry; submitted to Primitive, Manufact, Armature (and Insforge only if the DB swap happened).
 - [ ] Repo pushed; `README.md` has the one-paragraph pitch, the runbook, and the three-sentence pitch from section 7.
 - [ ] Backup video uploaded and linked in the submission.
-- [ ] `benchmark.md` numbers pasted into the slide ("TK's session: N tokens. The capsule: M.").
+- [ ] `npm run stats:sessions` rerun on the demo laptop; its median pasted into the slide next to the capsule length from `benchmark.md`, both in characters.
 - [ ] Demo laptops: Yunha's Codex with MCP configured, TK's Claude Code with the fixture session, worker running, Acme mock running, dashboard open on a third screen, TK's phone charged and on the Primitive thread.
 - [ ] Rehearsed three times with a stopwatch. Under three minutes including the red-to-green moment.
 - [ ] The two sentences everyone on the team can say verbatim: the stage line (section 6) and the "has this been done" answer (section 4).
