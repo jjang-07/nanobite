@@ -55,7 +55,7 @@ function progress(pr: PrRow, has: (kind: string) => boolean): { at: number; stop
 /** Shared completion wording for the request header, timeline, and Inbox. */
 export function deliveryTitle(pr: PrRow): string | null {
     if (pr.state === 'delivered' || pr.state === 'reported')
-        return pr.decision === 'edit' ? 'Delivered (edited)' : 'Delivered';
+        return pr.decision === 'edit' ? 'Delivered (edited)' : pr.decision === 'auto' ? 'Delivered (auto-approved)' : 'Delivered (approved)';
     if (pr.state === 'denied')
         return pr.capsule_sent_email_id || pr.capsule_inbound_email_id ? 'Delivered (denied)' : 'Delivering (denied)';
     return null;
@@ -105,18 +105,26 @@ function gatesCheckpoint(gates: TrackStep[]): { status: StepStatus; label: strin
         return { status: 'current', label: current.label };
     return gates.some(g => g.status === 'skipped') ? { status: 'skipped', label: 'Not shared' } : { status: 'waiting', label: 'Waiting' };
 }
-export function trackerHtml(pr: PrRow, events: EventRow[], config?: Pick<Config, 'APPROVER_NAME'>): string {
+interface Checkpoint {
+    key: 'asked' | 'received' | 'approval' | 'delivered';
+    group: 'request' | 'gate' | 'delivery';
+    title: string;
+    status: StepStatus;
+    label: string;
+}
+/** The four points shown on both the request page and the Inbox: Asked, Received, Approval (the three gates as one), Delivery. */
+function checkpoints(pr: PrRow, events: EventRow[], config?: Pick<Config, 'APPROVER_NAME'>): Checkpoint[] {
     const steps = trackSteps(pr, events, config), gates = steps.filter(s => s.gate), cp = gatesCheckpoint(gates);
     const humanDenied = pr.state === 'denied' && pr.decision === 'deny' && pr.decision_reason !== 'no_sources';
     const approval = humanDenied ? { status: 'done' as const, label: 'Review complete' }
         : cp.status === 'done' ? { ...cp, label: pr.decision === 'auto' ? 'Approval rule applied' : 'Review complete' } : cp;
-    const delivery = { ...steps[5], title: deliveryTitle(pr) ?? 'Delivery' };
-    let deliveryLabel = shortLabel(delivery);
+    const delivery = steps[5];
+    let deliveryTitle_ = deliveryTitle(pr) ?? 'Delivery', deliveryLabel = shortLabel(delivery);
     if (pr.state === 'denied') {
         deliveryLabel = pr.decision_reason === 'no_sources' ? 'No matching source' : 'Denied by you';
     }
     else if (pr.state === 'failed') {
-        delivery.title = 'Not shared';
+        deliveryTitle_ = 'Not shared';
         deliveryLabel = 'Request stopped';
     }
     else if (['approved', 'delivered', 'reported'].includes(pr.state)) {
@@ -124,23 +132,25 @@ export function trackerHtml(pr: PrRow, events: EventRow[], config?: Pick<Config,
             : pr.decision === 'edit' ? 'Edited by you' : 'Approved by you';
         deliveryLabel = pr.state === 'approved' ? `${decision} · Delivering` : decision;
     }
-    const point = (s: TrackStep, label = shortLabel(s)) => `<li class="track-step" data-anim-key="step-${s.key}" data-group="${GROUP[s.key]}" data-status="${s.status}"><span class="track-dot" aria-hidden="true"></span><span class="track-title">${escape(s.title)}</span><span class="track-label">${escape(label)}</span></li>`;
-    const checkpoint = `<li class="track-step" data-anim-key="step-approval" data-group="gate" data-status="${approval.status}"><span class="track-dot" aria-hidden="true"></span><span class="track-title">Approval</span><span class="track-label">${escape(approval.label)}</span></li>`;
-    return `<section class="section tracking" aria-labelledby="track-heading"><h2 id="track-heading">Tracking</h2><ol class="track" aria-label="Request progress">${point(steps[0])}${point(steps[1])}${checkpoint}${point(delivery, deliveryLabel)}</ol></section>`;
+    const point = (s: TrackStep): Checkpoint => ({ key: s.key as Checkpoint['key'], group: GROUP[s.key], title: s.title, status: s.status, label: shortLabel(s) });
+    return [point(steps[0]), point(steps[1]), { key: 'approval', group: 'gate', title: 'Approval', ...approval }, { key: 'delivered', group: 'delivery', title: deliveryTitle_, status: delivery.status, label: deliveryLabel }];
+}
+export function trackerHtml(pr: PrRow, events: EventRow[], config?: Pick<Config, 'APPROVER_NAME'>): string {
+    const points = checkpoints(pr, events, config).map(c => `<li class="track-step" data-anim-key="step-${c.key}" data-group="${c.group}" data-status="${c.status}"><span class="track-dot" aria-hidden="true"></span><span class="track-title">${escape(c.title)}</span><span class="track-label">${escape(c.label)}</span></li>`).join('');
+    return `<section class="section tracking" aria-labelledby="track-heading"><h2 id="track-heading">Tracking</h2><ol class="track" aria-label="Request progress">${points}</ol></section>`;
 }
 /** The step-by-step record with times and details, shown at the bottom of the request page. */
 export function activityLogHtml(pr: PrRow, events: EventRow[], config?: Pick<Config, 'APPROVER_NAME'>): string {
     const rows = trackSteps(pr, events, config).filter(s => s.status !== 'waiting' && s.status !== 'skipped').map(s => `<li><div class="log-head"><strong>${s.gate ? `Gate ${s.gate} · ` : ''}${escape(s.title)}</strong><span class="note">${escape(s.time ?? '')}</span></div><p>${escape(s.status === 'done' ? s.detail : [s.label, s.detail].filter(Boolean).join(' · '))}</p></li>`).join('');
     return `<section class="section" aria-labelledby="log-heading"><h2 id="log-heading">Activity log</h2><ol class="activity-log">${rows || '<li class="muted">Nothing has happened yet.</li>'}</ol></section>`;
 }
-/** Six-segment bar for an Inbox row, grouped 2 · 3 · 1; the state text next to it carries the meaning. */
+/** The same four points as the request page, as evenly spaced segments; the state text next to it carries the meaning. */
 export function miniTrack(pr: PrRow, config?: Pick<Config, 'APPROVER_NAME'>): string {
-    return `<span class="mini-track" aria-hidden="true">${trackSteps(pr, [], config).map((s, i) => `<span data-anim-key="${escape(pr.id)}:${i}" data-group="${GROUP[s.key]}" data-status="${s.status}"></span>`).join('')}</span>`;
+    return `<span class="mini-track" aria-hidden="true">${checkpoints(pr, [], config).map((c, i) => `<span data-anim-key="${escape(pr.id)}:${i}" data-group="${c.group}" data-status="${c.status}"></span>`).join('')}</span>`;
 }
 export const trackerStyles = `
 .track{list-style:none;padding:0;margin:22px 0 0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
-.track-step{position:relative;min-width:0;padding:26px 16px 0 0;--on:var(--soft)}
-.track-step[data-group=gate]{--on:var(--state)}
+.track-step{position:relative;min-width:0;padding:26px 16px 0 0;--on:var(--state)}
 .track-step::before{content:"";position:absolute;top:7px;left:0;right:0;height:2px;background:var(--line)}
 .track-step:last-child::before{right:auto;width:16px}
 .track-step[data-status=done]::before{background:var(--on)}
@@ -152,8 +162,8 @@ export const trackerStyles = `
 .track-step[data-status=skipped] .track-dot{border-style:dashed}
 .track-kicker{display:block;font-size:12px;color:var(--state);font-weight:600}
 .track-title{display:block;font-weight:500;line-height:1.35;color:var(--muted)}
-.track-step[data-group=gate] .track-title{font-weight:600;color:#181818}
-.track-step[data-status=current] .track-title{color:#181818}
+.track-step[data-status=done] .track-title,.track-step[data-status=current] .track-title,.track-step[data-status=stopped] .track-title{color:#181818}
+.track-step[data-status=current] .track-title{font-weight:600}
 .track-label{display:block;font-size:13px;color:var(--muted)}
 .track-step[data-status=current] .track-label{color:var(--state);font-weight:600}
 .track-step[data-status=stopped] .track-label{color:#181818;font-weight:600}
@@ -174,13 +184,11 @@ export const trackerStyles = `
 .activity-log{list-style:none;padding:0;margin:16px 0 0}.activity-log>li{border-top:1px solid var(--line);padding:13px 0}
 .activity-log p{margin:2px 0 0;font-size:14px;color:var(--muted);overflow-wrap:anywhere}
 .log-head{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap;font-size:14px}.log-head strong{font-weight:500}
-.mini-track{display:flex;gap:3px;margin-top:6px}.mini-track span{width:12px;height:3px;background:var(--line)}
-.mini-track span:nth-child(3),.mini-track span:nth-child(6){margin-left:5px}
-.mini-track span[data-status=done]{background:var(--soft)}.mini-track span[data-group=gate][data-status=done]{background:var(--state)}
+.mini-track{display:flex;gap:4px;margin-top:6px}.mini-track span{width:22px;height:3px;background:var(--line)}
+.mini-track span[data-status=done]{background:var(--state)}
 .mini-track span[data-status=current]{background:#8fb0dd}.mini-track span[data-status=stopped]{background:#181818}
 .summary-block{margin:4px 0 22px;max-width:72ch}.summary-block p{margin:0}.summary-text{font-size:18px;line-height:1.5;font-weight:500}
 .live-stamp{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .intro.top{margin-bottom:10px}.status-block{margin-bottom:0}
-:root{--soft:#9db4d6}
 @media(max-width:760px){.track{grid-template-columns:1fr}.track-step{padding:0 0 18px 32px}.track-step::before{top:0;bottom:0;left:7px;right:auto;width:2px;height:auto}.track-step:last-child::before{display:none}.track-kicker{display:inline;margin-right:8px}.track-title{display:inline}.track-kicker:empty,.track-step:not([data-group=gate]) .track-kicker{display:none}.track-step.just-done::before{transform-origin:top center;animation-name:line-fill-v}}
 `;

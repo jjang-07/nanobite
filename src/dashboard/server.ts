@@ -47,7 +47,7 @@ export async function startDashboard(db: DatabaseSync, port: number, options: {
                     res.end(JSON.stringify(url.searchParams.get('v') === version ? { version } : { version, html: html() }));
                 };
                 if (url.pathname === '/rules') {
-                    send(200, rulesPage({ notice: url.searchParams.get('notice') ?? undefined }));
+                    send(200, rulesPage({ notice: url.searchParams.get('notice') ?? undefined, editingId: Number(url.searchParams.get('edit')) || undefined }));
                     return;
                 }
                 if (url.pathname === '/') {
@@ -98,20 +98,20 @@ export async function startDashboard(db: DatabaseSync, port: number, options: {
                 const revoke = url.pathname.match(/^\/rules\/approval\/(rule_[a-f0-9-]+)\/revoke$/);
                 try {
                     const input = { kind: form.get('kind') ?? '', pattern: form.get('pattern') ?? '', placeholder: form.get('placeholder') ?? '', note: form.get('note') ?? '' };
-                    let notice = '', anchor = 'custom-rules';
+                    let notice = '', anchor = 'protection-rules';
                     if (url.pathname === '/rules/create') {
                         saveProtectionRule(db, config.RESPONDER_IDENTITY, input);
                         notice = 'created';
                     }
                     else if (edit) {
                         saveProtectionRule(db, config.RESPONDER_IDENTITY, input, Number(edit[1]));
-                        notice = 'saved';
+                        notice = 'saved'; anchor = `rule-${edit[1]}`;
                     }
                     else if (toggle) {
                         const enabled = form.get('enabled');
                         if (enabled !== '0' && enabled !== '1') throw new Error('Choose Enable or Disable.');
                         setProtectionRuleEnabled(db, config.RESPONDER_IDENTITY, Number(toggle[1]), enabled === '1');
-                        notice = 'toggled';
+                        notice = 'toggled'; anchor = `rule-${toggle[1]}`;
                     }
                     else if (url.pathname === '/rules/preview') {
                         const sample = form.get('sample') ?? '';

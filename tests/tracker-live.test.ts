@@ -66,11 +66,11 @@ test('detail page and Inbox carry the tracker and update in place, never by relo
 });
 test('completion wording matches across the timeline, header, and Inbox for every decision', () => {
     const cases = [
-        { state: 'delivered', decision: 'approve', title: 'Delivered', label: 'Approved by you', status: 'done' },
+        { state: 'delivered', decision: 'approve', title: 'Delivered (approved)', label: 'Approved by you', status: 'done' },
         { state: 'reported', decision: 'edit', title: 'Delivered (edited)', label: 'Edited by you', status: 'done' },
         { state: 'approved', decision: 'edit', title: 'Delivery', label: 'Edited by you · Delivering', status: 'current' },
-        { state: 'delivered', decision: 'approve_always', title: 'Delivered', label: 'Approved by you', status: 'done' },
-        { state: 'delivered', decision: 'auto', title: 'Delivered', label: 'Auto-approved under a rule', status: 'done' },
+        { state: 'delivered', decision: 'approve_always', title: 'Delivered (approved)', label: 'Approved by you', status: 'done' },
+        { state: 'delivered', decision: 'auto', title: 'Delivered (auto-approved)', label: 'Auto-approved under a rule', status: 'done' },
         { state: 'denied', decision: 'deny', sent: 'denial_sent', title: 'Delivered (denied)', label: 'Denied by you', status: 'done' },
         { state: 'denied', decision: 'deny', title: 'Delivering (denied)', label: 'Denied by you', status: 'current' },
         { state: 'denied', decision: 'deny', reason: 'no_sources', sent: 'denial_sent', title: 'Delivered (denied)', label: 'No matching source', status: 'done' },
@@ -139,7 +139,7 @@ test('a step that just completed is marked for the completion animation; nothing
     const p = pr('awaiting_approval', { draft_answer: 'Use one key.' }, ['request_sent']);
     const html = renderPr(p.row, p.events, { config });
     assert.match(html, /<li class="track-step" data-anim-key="step-approval"/);
-    assert.match(renderInbox([p.row], { config }), /data-anim-key="cpr_t1:4"/);
+    assert.match(renderInbox([p.row], { config }), /data-anim-key="cpr_t1:3"/);
     const script = html.match(/<script>([\s\S]*?)<\/script>/)![1];
     const el = (key: string, status: string) => { const classes: string[] = []; return { dataset: { animKey: key, status }, classList: { add: (c: string) => classes.push(c) }, classes }; };
     let current = [el('step-received', 'done'), el('step-approval', 'current')];

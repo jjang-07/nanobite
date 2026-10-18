@@ -74,3 +74,18 @@ test('rules actions reject foreign origins and responders, preserve invalid inpu
     assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
     assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
 });
+
+test('Rules page names built-in patterns in plain words, edits inline, and returns to the changed rule', async t => {
+    const s = await session(t), owner = s.config.RESPONDER_IDENTITY;
+    assert.match(s.page, /Ticket IDs, like ACME-1234/);
+    assert.match(s.page, /Email addresses/);
+    assert.doesNotMatch(s.page, /\\bACME-/, 'raw regular expressions stay out of the page');
+    assert.equal((await s.post('/rules/create', { kind: 'literal', pattern: 'Example Client', placeholder: '[customer]' })).headers.get('location'), '/rules?notice=created#protection-rules');
+    const rule = listProtectionRules(s.db, owner).find(r => r.is_custom)!;
+    assert.doesNotMatch(s.page, /aria-label="Edit protection rule"/);
+    const editing = await (await fetch(`${s.origin}/rules?edit=${rule.id}`)).text();
+    assert.match(editing, new RegExp(`action="/rules/${rule.id}/update#rule-${rule.id}"`));
+    assert.match(editing, /value="Example Client"/);
+    assert.equal((await s.post(`/rules/${rule.id}/toggle`, { enabled: '0' })).headers.get('location'), `/rules?notice=toggled#rule-${rule.id}`);
+    assert.match(await (await fetch(s.origin + '/rules')).text(), /class="rule-line is-off" id="rule-\d+"><div class="rule-what"><span class="rule-name">“Example Client”/);
+});

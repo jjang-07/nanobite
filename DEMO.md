@@ -62,7 +62,7 @@ Create a separate fresh request for each decision. A finished request cannot be 
 
 | Path | Your action in email | Expected result |
 |---|---|---|
-| Approve | Tap Approve, then Send; or reply `approve` | Delivered; Approved by you |
+| Approve | Tap Approve, then Send; or reply `approve` | Delivered (approved); Approved by you |
 | Edit | Tap Edit, optionally add a decision reason, and change the Answer to share section; then Send | Delivered (edited); Edited by you |
 | Deny | Reply `deny` plus a reason | Delivered (denied) / Denied by you; requester receives a denial |
 

@@ -20,7 +20,7 @@ The local demo uses Claude (`claude-opus-5-5`) for drafting and Primitive for re
 
 - The top timeline is Asked → Received → Approval → Delivery. The nested “Three gates” display was removed.
 - Reviewer wording now says “Waiting for your approval,” “Approved by you,” “Edited by you,” and “Denied by you.” User-facing references to a named reviewer were replaced with neutral language.
-- Completed requests display **Delivered**, **Delivered (edited)**, or **Delivered (denied)** consistently across the inbox, request detail, timeline, and activity. A denied delivery means the denial was returned; no answer was shared.
+- Completed requests display **Delivered (approved)**, **Delivered (edited)**, **Delivered (auto-approved)**, or **Delivered (denied)** consistently across the inbox, request detail, timeline, and activity. A denied delivery means the denial was returned; no answer was shared.
 - The processing stages are explained in expandable sections on request details and the Rules page.
 - Empty Outcome and Outcome note fields are hidden. The inbox shows outcome information only when a real report exists. The backend outcome tool remains available; the current live demonstration ends at delivery unless an agent explicitly reports a result.
 
