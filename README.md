@@ -10,7 +10,7 @@ Built at YC's *Make Something Agents Want* hackathon (October 17–18, 2026).
 
 ## The problem
 
-A coding agent gets stuck on something an engineer at another company already solved, in a debugging session that never became documentation. The two companies share no Slack, the engineer may be asleep, and nobody should hand over a whole session to answer one question.
+A coding agent gets stuck on something an engineer at another company already solved, in a debugging session that never became documentation. The two companies share no Slack, the engineer may be AFK, and nobody should hand over a whole session to answer one question.
 
 ## What nanobite does
 
