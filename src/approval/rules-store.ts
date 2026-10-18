@@ -20,3 +20,18 @@ export function createRule(db: DatabaseSync, responder: string, requester: strin
     return findRule(db, responder, requester, topic)!;
 }
 export function revokeRule(db: DatabaseSync, id: string) { db.prepare('UPDATE rules SET revoked_at=? WHERE id=? AND revoked_at IS NULL').run(nowIso(), id); }
+
+export function listApprovalRules(db: DatabaseSync, responder: string): AutoRule[] {
+    return db.prepare('SELECT * FROM rules WHERE responder_identity=? AND revoked_at IS NULL ORDER BY created_at DESC').all(responder) as unknown as AutoRule[];
+}
+export function createManualApprovalRule(db: DatabaseSync, responder: string, requester: string, topic: string, author: string, confirmed: boolean): AutoRule {
+    requester = requester.trim(); topic = topic.trim();
+    if (!/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(requester) || requester.length > 254 || requester.includes('*')) throw new Error('Enter the exact requester email address.');
+    if (!/^[a-z0-9]+(?:[-/][a-z0-9]+)*$/.test(topic) || topic.length > 120) throw new Error('Enter an exact topic using lowercase words, hyphens, or slashes. Wildcards are not supported.');
+    if (!confirmed) throw new Error('Confirm that matching answers may be sent without a fresh review.');
+    return createRule(db, responder, requester, topic, author, 'manual');
+}
+export function revokeScopedRule(db: DatabaseSync, responder: string, id: string) {
+    if (!db.prepare('SELECT 1 FROM rules WHERE id=? AND responder_identity=? AND revoked_at IS NULL').get(id, responder)) throw new Error('Approval rule not found for this responder.');
+    revokeRule(db, id);
+}

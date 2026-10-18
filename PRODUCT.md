@@ -12,7 +12,7 @@ TypeScript on Node.js 24 or newer, a server-rendered dashboard using `node:http`
 
 ## Users
 
-A requesting engineer or coding agent needs a narrow answer from another team's engineering context. A responding engineer reviews the proposed answer and decides what can be shared. The local demo represents Yunha at a startup and TK at the SDK vendor; these identities are demonstration roles, not separate authenticated tenants.
+A requesting engineer or coding agent needs a narrow answer from another team's engineering context. A responding engineer reviews the proposed answer and decides what can be shared. The local demo represents a requester at a startup and a reviewer at the SDK vendor; these identities are demonstration roles, not separate authenticated tenants.
 
 ## Product Purpose
 
@@ -30,7 +30,8 @@ The dashboard is served on loopback. A requester can create a Nanobite request i
 
 ## Capabilities and Constraints
 
-- Requests move through queued, requested, received, drafting, review, decision, delivery, and outcome states. Failures and denials remain visible.
+- Requests move through queued, requested, received, drafting, review, decision, delivery, and outcome states. Outcome fields stay hidden until the requester reports a result.
+- The Rules page lets the operator add, edit, disable, and preview protection rules, and manually create or revoke approval rules scoped to an exact requester and topic. Custom protections survive reseeding. Automatic grants require an explicit confirmation and never use wildcard scope. Failures and denials remain visible.
 - Sharing follows three gates: deterministic rules, model minimization, then human approval or an existing scoped approval rule.
 - Approve draft sends the draft exactly. Send edited answer sends the full replacement. These are separate actions and must remain clearly distinguished.
 - Approve always creates a rule scoped to the requester, responder, and topic. Its later uses create a notification with a revoke action. Revocation affects future requests and does not recall an already delivered answer.

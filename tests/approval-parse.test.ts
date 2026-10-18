@@ -47,3 +47,24 @@ test('extra human words after approve still refuse to approve', () => {
     assert.equal(parseDecision('approve\nbut remove the v2.5 line first').decision, 'unrecognized');
     assert.equal(parseDecision('approve\nOn second thought, wait').decision, 'unrecognized');
 });
+
+test('button replies allow an empty or multiline decision reason on all decisions', () => {
+    for (const command of ['approve', 'deny', 'edit'] as const) {
+        for (const reason of ['', 'Reviewed the supported fix.\nRemoved an internal detail.']) {
+            const body = `${command}\n\nDecision reason (optional):\n${reason}\n\n${command === 'edit' ? 'Answer to share:\nReuse one key across retries.' : ''}`;
+            assert.deepEqual(parseDecision(gmail(body)), { decision: command, ...(reason ? { reason } : {}), ...(command === 'edit' ? { text: 'Reuse one key across retries.' } : {}) });
+        }
+    }
+});
+test('incomplete edit templates and changed command lines never release an answer', () => {
+    for (const body of [
+        'edit\n\nDecision reason (optional):\nRemoved an internal detail.',
+        'edit\n\nDecision reason (optional):\nLooks good.\n\nAnswer to share:\n',
+        'approve but remove a line\n\nDecision reason (optional):\nLooks good.',
+        'approve\n\nDecision reason (optional):\nLooks good.\n\nAnswer to share:\nA changed answer.',
+    ]) assert.equal(parseDecision(body).decision, 'unrecognized');
+});
+test('local replacement answers keep literal template labels as part of the approved text', () => {
+    const text = 'Decision reason (optional):\nExplain this phrase.\nAnswer to share:\nKeep all these words.';
+    assert.deepEqual(parseDecision('edit\n' + text, { local: true }), { decision: 'edit', text });
+});

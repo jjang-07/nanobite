@@ -56,7 +56,7 @@ test('empty and failed states provide a clear next step; error pages reject exte
     const failed = renderPr({ ...sample(), state: 'failed' }, [], { config });
     assert.match(failed, /Request stopped/);
     assert.match(failed, /Ask your coding agent to send a new, narrower request/);
-    assert.match(renderPr({ ...sample(), state: 'denied' }, [], { config }), /This request was declined or no matching source was available\. No answer was shared\./);
+    assert.match(renderPr({ ...sample(), state: 'denied' }, [], { config }), /The denial is being sent to the requester\. No answer was shared\./);
     const error = renderError('Request unavailable', '<script>bad()</script>', 'javascript:alert(1)', { config });
     assert.match(error, /<h1>Request unavailable<\/h1>/);
     assert.match(error, /&lt;script&gt;bad\(\)&lt;\/script&gt;/);
@@ -112,4 +112,14 @@ test('all untrusted fields and form values are escaped; locked design has no dec
         assert.match(html, /background:\s*#fff/);
     }
     assert.doesNotMatch(detail, /<\/textarea><script>/);
+});
+
+test('outcome fields and the Inbox column stay hidden until an actual result is reported', () => {
+    const pending = { ...sample(), outcome_result: null, outcome_note: null };
+    const detail = renderPr(pending, [], { config });
+    assert.doesNotMatch(detail, /<dt>Outcome<|<dt>Outcome note</);
+    assert.doesNotMatch(renderInbox([pending], { config }), />Outcome<|data-label="Outcome"/);
+    const reported = { ...pending, state: 'reported', outcome_result: 'passed', outcome_note: 'The retry test now records one charge.' };
+    assert.match(renderPr(reported, [], { config }), /<dt>Outcome<|The retry test now records one charge\./);
+    assert.match(renderInbox([reported], { config }), />Outcome<|data-label="Outcome"/);
 });

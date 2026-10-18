@@ -31,8 +31,14 @@ export function applyRules(text: string, rules: readonly Rule[]): {
             return sentence; const leading = sentence.match(/^\s*/)?.[0] ?? ''; return `${leading}[sentence removed: ${hit(r.placeholder)}]`; }).join('');
     return { text, removals: [...counts].map(([placeholder, count]) => ({ placeholder, count })) };
 }
-export function loadRules(db: DatabaseSync, responderIdentity: string): Rule[] { return db.prepare('SELECT kind,pattern,placeholder FROM denylist WHERE responder_identity=? ORDER BY id').all(responderIdentity) as unknown as Rule[]; }
+export function loadRules(db: DatabaseSync, responderIdentity: string): Rule[] { return db.prepare('SELECT kind,pattern,placeholder FROM denylist WHERE responder_identity=? AND enabled=1 ORDER BY id').all(responderIdentity) as unknown as Rule[]; }
 export function seedRules(db: DatabaseSync, sqlPath: string, responderIdentity = process.env.RESPONDER_IDENTITY ?? 'sdk-help@acme.local') {
     const sql = readFileSync(sqlPath, 'utf8').replaceAll('__RESPONDER__', responderIdentity.replaceAll("'", "''"));
-    transaction(db, () => { db.prepare('DELETE FROM denylist WHERE responder_identity=?').run(responderIdentity); db.exec(sql); });
+    transaction(db, () => {
+        const disabled = db.prepare('SELECT kind,pattern,placeholder FROM denylist WHERE responder_identity=? AND is_custom=0 AND enabled=0').all(responderIdentity);
+        db.prepare('DELETE FROM denylist WHERE responder_identity=? AND is_custom=0').run(responderIdentity);
+        db.exec(sql);
+        for (const row of disabled)
+            db.prepare('UPDATE denylist SET enabled=0 WHERE responder_identity=? AND is_custom=0 AND kind=? AND pattern=? AND placeholder=?').run(responderIdentity, row.kind!, row.pattern!, row.placeholder!);
+    });
 }

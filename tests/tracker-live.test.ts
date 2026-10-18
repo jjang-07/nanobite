@@ -23,17 +23,17 @@ test('tracker shows each stage like a delivery timeline, with the three gates la
     const waiting = pr('awaiting_approval', { draft_answer: 'Use one key.', removals: JSON.stringify([{ placeholder: '[another customer]', count: 3 }]) }, ['request_sent', 'received', 'sources_matched', 'rules_applied', 'drafted', 'approval_sent']);
     assert.equal(statuses(waiting), 'asked:done received:done rules:done minimize:done human:current delivered:waiting');
     const steps2 = trackSteps(waiting.row, waiting.events, config);
-    assert.match(steps2.find(s => s.key === 'human')!.label, /Waiting for TK/);
+    assert.match(steps2.find(s => s.key === 'human')!.label, /Waiting for your approval/);
     assert.match(steps2.find(s => s.key === 'rules')!.detail, /\[another customer\] ×3/);
     const reported = pr('reported', { draft_answer: 'x', decision: 'approve', outcome_result: 'passed' }, ['request_sent', 'received', 'sources_matched', 'drafted', 'decision', 'delivered', 'outcome']);
     assert.equal(statuses(reported), 'asked:done received:done rules:done minimize:done human:done delivered:done');
 });
-test('tracker marks a stop clearly: denial by TK, no source, automatic approval', () => {
+test('tracker marks a stop clearly: human denial, no source, automatic approval', () => {
     const denied = pr('denied', { draft_answer: 'x', decision: 'deny', decision_reason: 'mentions an unreleased version' }, ['request_sent', 'received', 'sources_matched', 'drafted', 'decision']);
-    assert.equal(statuses(denied), 'asked:done received:done rules:done minimize:done human:stopped delivered:skipped');
+    assert.equal(statuses(denied), 'asked:done received:done rules:done minimize:done human:stopped delivered:current');
     assert.match(trackSteps(denied.row, denied.events, config).find(s => s.key === 'human')!.detail, /unreleased/);
     const none = pr('denied', { decision: 'deny', decision_reason: 'no_sources' }, ['request_sent', 'received']);
-    assert.equal(statuses(none), 'asked:done received:done rules:stopped minimize:skipped human:skipped delivered:skipped');
+    assert.equal(statuses(none), 'asked:done received:done rules:stopped minimize:skipped human:skipped delivered:current');
     const auto = pr('delivered', { draft_answer: 'x', decision: 'auto' }, ['request_sent', 'received', 'sources_matched', 'drafted', 'auto_merged', 'delivered']);
     assert.match(trackSteps(auto.row, auto.events, config).find(s => s.key === 'human')!.detail, /rule/i);
 });
@@ -42,18 +42,19 @@ test('detail page and Inbox carry the tracker and update in place, never by relo
     const html = renderPr(p.row, p.events, { config });
     assert.match(html, /class="track"/);
     assert.match(html, /Gate 1/); assert.match(html, /Gate 3/);
-    // One clean line: soft blue for Request and Delivery, vivid blue for the three gates; no fine print under steps.
+    // Four checkpoints keep the top timeline focused on approval and delivery.
     const track = html.slice(html.indexOf('class="track"'), html.indexOf('</ol>', html.indexOf('class="track"')));
-    // Four points on the line; the three gates are listed inside the one gates checkpoint.
-    assert.deepEqual([...track.matchAll(/<li class="track-step[^"]*" data-anim-key="(step-\w+)"/g)].map(m => m[1]), ['step-asked', 'step-received', 'step-gates', 'step-delivered']);
-    assert.deepEqual([...track.matchAll(/<li class="gate-sub" data-anim-key="(step-\w+)" data-status="(\w+)"/g)].map(m => `${m[1]}:${m[2]}`), ['step-rules:done', 'step-minimize:done', 'step-human:current']);
-    assert.match(track, /data-anim-key="step-gates" data-group="gate" data-status="current"/);
+    assert.deepEqual([...track.matchAll(/<li class="track-step[^"]*" data-anim-key="(step-\w+)"/g)].map(m => m[1]), ['step-asked', 'step-received', 'step-approval', 'step-delivered']);
+    assert.match(track, /data-anim-key="step-approval" data-group="gate" data-status="current"/);
+    assert.match(track, />Approval<.*>Waiting for your approval</);
+    assert.doesNotMatch(html, /\bTK\b|Reviewing as/);
+    assert.doesNotMatch(track, /Three gates|gate-sub|>Rules<|>Minimize<|>Human</);
     assert.doesNotMatch(html, /Outcome<\/span>|Waiting for Yunha's test result/);
     assert.doesNotMatch(track, /track-detail|Masked|Approval email sent/);
     // The details live in the Activity log at the bottom of the page instead.
     const log = html.slice(html.indexOf('Activity log'));
     assert.ok(html.indexOf('Activity log') > html.indexOf('Draft answer'));
-    assert.match(log, /Waiting for TK/);
+    assert.match(log, /Waiting for your approval/);
     assert.doesNotMatch(html, /<h2[^>]*>Request context<\/h2>/);
     assert.doesNotMatch(html, /setInterval\(|http-equiv="refresh"/, "no timed page reload; only the explicit discard button reloads");
     const inbox = renderInbox([p.row], { config });
@@ -62,6 +63,36 @@ test('detail page and Inbox carry the tracker and update in place, never by relo
     assert.match(inbox, /<span [^>]*data-group="gate" data-status=/, 'gate segments are marked in the Inbox bar');
     assert.doesNotMatch(inbox, /action="\/requests"/, 'requests come from agents, not from a dashboard form');
     assert.doesNotMatch(inbox, /setInterval\(|http-equiv="refresh"/);
+});
+test('completion wording matches across the timeline, header, and Inbox for every decision', () => {
+    const cases = [
+        { state: 'delivered', decision: 'approve', title: 'Delivered', label: 'Approved by you', status: 'done' },
+        { state: 'reported', decision: 'edit', title: 'Delivered (edited)', label: 'Edited by you', status: 'done' },
+        { state: 'approved', decision: 'edit', title: 'Delivery', label: 'Edited by you · Delivering', status: 'current' },
+        { state: 'delivered', decision: 'approve_always', title: 'Delivered', label: 'Approved by you', status: 'done' },
+        { state: 'delivered', decision: 'auto', title: 'Delivered', label: 'Auto-approved under a rule', status: 'done' },
+        { state: 'denied', decision: 'deny', sent: 'denial_sent', title: 'Delivered (denied)', label: 'Denied by you', status: 'done' },
+        { state: 'denied', decision: 'deny', title: 'Delivering (denied)', label: 'Denied by you', status: 'current' },
+        { state: 'denied', decision: 'deny', reason: 'no_sources', sent: 'denial_sent', title: 'Delivered (denied)', label: 'No matching source', status: 'done' },
+        { state: 'failed', title: 'Not shared', label: 'Request stopped', status: 'skipped' },
+    ];
+    for (const c of cases) {
+        const p = pr(c.state, { decision: c.decision ?? null, decision_reason: c.reason ?? null, capsule_sent_email_id: c.sent ?? null });
+        try {
+            const html = renderPr(p.row, p.events, { config });
+            const final = html.match(/<li class="track-step" data-anim-key="step-delivered"[^>]*>[\s\S]*?<\/li>/)![0];
+            assert.ok(final.includes(`data-status="${c.status}"`));
+            assert.ok(final.includes(`>${c.title}</span>`));
+            assert.ok(final.includes(`>${c.label}</span>`));
+            if (['delivered', 'reported', 'denied'].includes(c.state)) {
+                assert.ok(html.includes(`>${c.title}</span>`));
+                assert.ok(renderInbox([p.row], { config }).includes(`>${c.title}</span>`));
+            }
+            if (c.state === 'denied' || c.state === 'failed') assert.doesNotMatch(final, /Approved by|Edited by/);
+            if (c.decision === 'auto') assert.doesNotMatch(final, /Approved by you/);
+        }
+        finally { p.db.close(); }
+    }
 });
 test('live endpoints return fresh HTML only when the state changed', async () => {
     const db = openDb(':memory:'); migrate(db);
@@ -75,7 +106,7 @@ test('live endpoints return fresh HTML only when the state changed', async () =>
         assert.equal(same.html, undefined);
         updatePr(db, 'cpr_live', { state: 'awaiting_approval', draft_answer: 'Use one key.' }); addEvent(db, 'cpr_live', 'approval_sent');
         const changed = await (await fetch(`${base}/pr/cpr_live/live?v=${encodeURIComponent(first.version)}`)).json();
-        assert.notEqual(changed.version, first.version); assert.match(changed.html, /Waiting for TK/);
+        assert.notEqual(changed.version, first.version); assert.match(changed.html, /Waiting for your approval/);
         const inbox = await (await fetch(`${base}/live`)).json();
         assert.match(inbox.html, /cpr_live/);
         assert.equal((await fetch(`${base}/pr/cpr_nope/live`)).status, 404);
@@ -107,20 +138,20 @@ test('the page script swaps in fresh HTML when the version changes, and never wh
 test('a step that just completed is marked for the completion animation; nothing animates on first load', async () => {
     const p = pr('awaiting_approval', { draft_answer: 'Use one key.' }, ['request_sent']);
     const html = renderPr(p.row, p.events, { config });
-    assert.match(html, /<li class="gate-sub" data-anim-key="step-human"/);
+    assert.match(html, /<li class="track-step" data-anim-key="step-approval"/);
     assert.match(renderInbox([p.row], { config }), /data-anim-key="cpr_t1:4"/);
     const script = html.match(/<script>([\s\S]*?)<\/script>/)![1];
     const el = (key: string, status: string) => { const classes: string[] = []; return { dataset: { animKey: key, status }, classList: { add: (c: string) => classes.push(c) }, classes }; };
-    let current = [el('step-rules', 'done'), el('step-human', 'current')];
+    let current = [el('step-received', 'done'), el('step-approval', 'current')];
     const root = { dataset: { live: '/pr/cpr_t1/live', version: 'v1' } as Record<string, string>, contains: () => false, querySelectorAll: () => current,
-        set innerHTML(_v: string) { current = [el('step-rules', 'done'), el('step-human', 'done')]; }, get innerHTML() { return ''; } };
+        set innerHTML(_v: string) { current = [el('step-received', 'done'), el('step-approval', 'done')]; }, get innerHTML() { return ''; } };
     const stub = { textContent: '', hidden: true, addEventListener: () => { } };
     let timer: Function | null = null;
     const document = { hidden: false, activeElement: null, addEventListener: () => { }, querySelectorAll: () => [], querySelector: (s: string) => s === '[data-live]' ? root : stub };
     runInNewContext(script, { document, window: { addEventListener: () => { } }, location: { reload: () => assert.fail() }, fetch: async () => ({ ok: true, json: async () => ({ version: 'v2', html: 'x' }) }), setTimeout: (f: Function) => { timer = f; }, encodeURIComponent, Date });
     await timer!();
-    assert.deepEqual(current[1].classes, ['just-done'], 'Human just completed');
-    assert.deepEqual(current[0].classes, [], 'Rules was already done');
+    assert.deepEqual(current[1].classes, ['just-done'], 'Approval just completed');
+    assert.deepEqual(current[0].classes, [], 'Received was already done');
 });
 test('group labels above the tracker have no underline', () => {
     const p = pr('queued');

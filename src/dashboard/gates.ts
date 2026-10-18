@@ -1,0 +1,4 @@
+/** Shared plain-language explanation of the two automated checks and the release decision. */
+export function sharingGatesHtml(): string {
+    return `<ol class="gate-list"><li><h3>Protect sensitive information</h3><p>Your rules replace protected text or remove matching sentences before the model sees source excerpts. They also run on the generated draft.</p><p class="note">For example: a customer name becomes [customer].</p></li><li><h3>Draft a focused answer</h3><p>Claude, or your selected model, uses the cleaned excerpts to answer the question. It identifies supporting sources and flags details that may need judgment.</p><p class="note">The model proposes an answer. It cannot approve sharing.</p></li><li><h3>Get your approval</h3><p>You approve, edit, or deny the exact answer. Only an explicit rule for one requester and topic can skip a fresh review.</p><p class="note">Automatic approvals still pass the first two checks.</p></li></ol>`;
+}

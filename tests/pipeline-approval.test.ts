@@ -1,3 +1,4 @@
+import { decisionReplyBody } from '../src/gates/decision-reply.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { setup, queued, incoming, config } from './helpers.ts';
@@ -25,3 +26,43 @@ test('trustedReply compares bare addresses case-insensitively, even with display
     assert.equal(trusted({ ...r, fromEmail: '"tk@example.com" <mallory@evil.example>' }, 'sent_1', 'tk@example.com', 'sdk-help@acme.primitive.email'), false);
     assert.equal(trusted({ ...r, senderVerified: false }, 'sent_1', 'tk@example.com', 'sdk-help@acme.primitive.email'), false);
 });
+
+for (const path of ['threaded', 'button'] as const)
+    for (const command of ['approve', 'edit', 'deny'] as const)
+        test(`${path} ${command} records the reason separately from any shared answer`, async () => {
+            const s = await received();
+            try {
+                const deps = { ...s.deps, config: { ...s.deps.config, MAIL_PROVIDER: 'primitive' as const } };
+                await processReceived(s.db, deps);
+                const p = getPr(s.db, s.id)!;
+                const reason = 'Checked the fix and removed an internal detail.';
+                const answer = 'Reuse one payment key across retries.';
+                const body = decisionReplyBody(command, answer).replace('Decision reason (optional):', `Decision reason (optional):\n${reason}`);
+                if (path === 'threaded') {
+                    s.mail.deliverReply(p.approval_sent_email_id!, { bodyText: body, fromEmail: config.APPROVER_EMAIL });
+                    await pollApprovals(s.db, deps);
+                }
+                else {
+                    s.mail.deliverInbound({ id: 'fresh_reason', fromEmail: config.APPROVER_EMAIL, toEmail: config.RESPONDER_IDENTITY, subject: `Re: [Nanobite ${s.id}] Approve answer`, bodyText: body, dmarcPass: true });
+                    await pollInbound(s.db, deps);
+                }
+                const saved = getPr(s.db, s.id)!;
+                assert.equal(saved.decision, command);
+                assert.equal(saved.decision_reason, reason);
+                const envelope = parseEnvelope(s.mail.sent.at(-1)!.bodyText)!;
+                if (command === 'deny') {
+                    assert.equal(saved.state, 'denied');
+                    assert.equal(saved.approved_text, null);
+                    assert.equal(envelope.kind, 'denial');
+                    assert.equal(envelope.payload.reason, reason);
+                }
+                else {
+                    const exact = command === 'edit' ? answer : p.draft_answer;
+                    assert.equal(saved.state, 'approved');
+                    assert.equal(saved.approved_text, exact);
+                    assert.equal(envelope.payload.text, exact);
+                    assert.ok(!JSON.stringify(envelope.payload).includes(reason), 'review note is not in the capsule');
+                }
+            }
+            finally { s.db.close(); }
+        });

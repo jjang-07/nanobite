@@ -1,0 +1,76 @@
+import { test } from 'node:test';
+import type { TestContext } from 'node:test';
+import assert from 'node:assert/strict';
+import { openDb, migrate } from '../src/db/db.ts';
+import { loadConfig } from '../src/config.ts';
+import { startDashboard } from '../src/dashboard/server.ts';
+import { listProtectionRules, saveProtectionRule } from '../src/gates/protection-store.ts';
+import { loadRules, seedRules } from '../src/gates/rules.ts';
+import { listApprovalRules, createManualApprovalRule } from '../src/approval/rules-store.ts';
+async function session(t: TestContext) {
+    const db = openDb(':memory:'); migrate(db); const config = loadConfig({});
+    seedRules(db, new URL('../demo/fixtures/rules.sql', import.meta.url).pathname, config.RESPONDER_IDENTITY);
+    const server = await startDashboard(db, 0, { config });
+    t.after(async () => { await new Promise<void>(resolve => { server.close(() => resolve()); server.closeIdleConnections(); }); db.close(); });
+    const origin = `http://127.0.0.1:${(server.address() as any).port}`;
+    const page = await (await fetch(origin + '/rules')).text();
+    const csrf = page.match(/name="csrf" value="([^"]+)"/)![1];
+    const post = (path: string, values: Record<string, string>, source = origin) => fetch(origin + path, { method: 'POST', headers: { origin: source, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ csrf, ...values }), redirect: 'manual' });
+    return { db, config, origin, page, post };
+}
+
+test('Rules page manages protections, previews them locally, and grants/revokes exact approvals', async t => {
+    const s = await session(t), owner = s.config.RESPONDER_IDENTITY;
+    assert.match(s.page, /aria-current="page">Rules/);
+    assert.match(s.page, /Protect sensitive information/);
+    assert.match(s.page, /Draft a focused answer/);
+    assert.match(s.page, /Get your approval/);
+    assert.doesNotMatch(s.page, /name="confirmed"[^>]*checked/);
+    const input = { kind: 'literal', pattern: 'Example Client', placeholder: '[customer]', note: 'Customer privacy' };
+    assert.equal((await s.post('/rules/create', input)).status, 303);
+    const rule = listProtectionRules(s.db, owner).find(r => r.is_custom)!;
+    const count = listProtectionRules(s.db, owner).length;
+    const preview = await s.post('/rules/preview', { sample: 'Example Client had a timeout.' });
+    assert.equal(preview.status, 200);
+    assert.match(await preview.text(), /<pre class="exact" role="status">\[customer\] had a timeout\.<\/pre>/);
+    assert.equal(listProtectionRules(s.db, owner).length, count);
+    assert.equal((await s.post(`/rules/${rule.id}/update`, { ...input, pattern: 'Another Client' })).status, 303);
+    assert.equal((await s.post(`/rules/${rule.id}/toggle`, { enabled: '0' })).status, 303);
+    assert.ok(!loadRules(s.db, owner).some(r => r.pattern === 'Another Client'));
+    assert.equal((await s.post(`/rules/${rule.id}/toggle`, { enabled: '1' })).status, 303);
+    assert.ok(loadRules(s.db, owner).some(r => r.pattern === 'Another Client'));
+    const grant = { requester: 'requester@example.com', topic: 'sdk/retries' };
+    assert.equal((await s.post('/rules/approval/create', grant)).status, 400);
+    assert.equal(listApprovalRules(s.db, owner).length, 0);
+    assert.equal((await s.post('/rules/approval/create', { ...grant, confirmed: 'yes' })).status, 303);
+    const auto = listApprovalRules(s.db, owner)[0];
+    assert.equal(auto.created_from_pr, 'manual');
+    assert.equal((await s.post(`/rules/approval/${auto.id}/revoke`, {})).status, 303);
+    assert.equal(listApprovalRules(s.db, owner).length, 0);
+});
+
+test('rules actions reject foreign origins and responders, preserve invalid inputs, and escape text', async t => {
+    const s = await session(t), owner = s.config.RESPONDER_IDENTITY, other = 'other@example.com';
+    const input = { kind: 'literal', pattern: '<script>alert(1)</script>', placeholder: '[customer]', note: 'Keep this note' };
+    assert.equal((await s.post('/rules/create', input, 'http://evil.example')).status, 403);
+    assert.equal((await s.post('/rules/create', { ...input, csrf: 'wrong' })).status, 403);
+    const invalid = await s.post('/rules/create', { ...input, placeholder: 'missing brackets' });
+    assert.equal(invalid.status, 400);
+    const invalidHtml = await invalid.text();
+    assert.match(invalidHtml, /role="alert"/); assert.match(invalidHtml, /value="Keep this note"/);
+    assert.match(invalidHtml, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+    assert.doesNotMatch(invalidHtml, /<script>alert\(1\)<\/script>/);
+    const otherId = saveProtectionRule(s.db, other, { ...input, pattern: 'Other Client' });
+    assert.equal((await s.post(`/rules/${otherId}/update`, input)).status, 400);
+    assert.equal((await s.post(`/rules/${otherId}/toggle`, { enabled: '0' })).status, 400);
+    assert.equal(listProtectionRules(s.db, other)[0].enabled, 1);
+    const otherGrant = createManualApprovalRule(s.db, other, 'requester@example.com', 'sdk/retries', 'reviewer@example.com', true);
+    assert.equal((await s.post(`/rules/approval/${otherGrant.id}/revoke`, {})).status, 400);
+    assert.equal(listApprovalRules(s.db, other).length, 1);
+    assert.equal(listApprovalRules(s.db, owner).length, 0);
+    assert.equal((await s.post('/rules/approval/create', { requester: 'requester@example.com', topic: '*', confirmed: 'yes' })).status, 400);
+    assert.equal((await s.post('/rules/create', input)).status, 303);
+    const html = await (await fetch(s.origin + '/rules')).text();
+    assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
+    assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+});

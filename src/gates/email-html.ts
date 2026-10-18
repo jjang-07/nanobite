@@ -2,6 +2,7 @@ import type { PrRow } from '../db/db.ts';
 import type { Config } from '../config.ts';
 import type { Removal } from '../types.ts';
 import { personName } from '../dashboard/tracker.ts';
+import { decisionReplyBody } from './decision-reply.ts';
 /**
  * The approval email as HTML, in the dashboard's visual language: one system sans stack, white page,
  * near-black text, muted labels, hairline rules, square buttons and tags, no images or icons.
@@ -19,7 +20,7 @@ function list<T>(value: string | null): T[] { try {
 catch {
     return [];
 } }
-/** RFC 6068 mailto: CRLF line breaks, everything percent-encoded. Long edit bodies fall back to a prompt. */
+/** RFC 6068 mailto: CRLF line breaks, everything percent-encoded. Long edit bodies fall back to an empty answer field. */
 export function decisionMailto(to: string, subject: string, body: string): string {
     const enc = (s: string) => encodeURIComponent(s.replace(/\r?\n/g, '\r\n'));
     return `mailto:${encodeURIComponent(to).replace('%40', '@')}?subject=${enc(subject)}&body=${enc(body)}`;
@@ -34,15 +35,15 @@ function button(label: string, href: string, primary: boolean): string {
     return `<td style="padding:0 8px 8px 0"><a href="${esc(href)}" style="display:inline-block;${style};padding:12px 22px;font-family:${FONT};font-size:15px;font-weight:600;line-height:1.2;text-decoration:none;mso-padding-alt:0">${esc(label)}</a></td>`;
 }
 export function approvalEmailHtml(p: PrRow, config: Pick<Config, 'APPROVER_NAME' | 'DASHBOARD_PUBLIC_URL'>, subject: string): string {
-    const approver = config.APPROVER_NAME || 'there', requester = personName(p.on_behalf_of, 'The requester');
+    const requester = personName(p.on_behalf_of, 'The requester');
     const removals = list<Removal>(p.removals), flags = list<string>(p.draft_flagged), sources = list<string>(p.matched_source_ids);
     const sessions = new Set(sources.map(id => String(id).split(':')[0])).size;
     const publicUrl = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/.test(config.DASHBOARD_PUBLIC_URL) ? null : `${config.DASHBOARD_PUBLIC_URL}/pr/${p.id}`;
     const re = `Re: ${subject}`, to = p.responder_identity, draft = p.draft_answer ?? '';
-    let editHref = decisionMailto(to, re, `edit\n\n${draft}`);
+    let editHref = decisionMailto(to, re, decisionReplyBody('edit', draft));
     if (editHref.length > 1900)
-        editHref = decisionMailto(to, re, 'edit\n\nWrite the full replacement answer here. Only this text will be shared.');
-    const buttons = `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>${button('Approve', decisionMailto(to, re, 'approve'), true)}${button('Deny', decisionMailto(to, re, 'deny'), false)}${button('Edit', editHref, false)}</tr></table>`;
+        editHref = decisionMailto(to, re, decisionReplyBody('edit'));
+    const buttons = `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>${button('Approve', decisionMailto(to, re, decisionReplyBody('approve')), true)}${button('Deny', decisionMailto(to, re, decisionReplyBody('deny')), false)}${button('Edit', editHref, false)}</tr></table>`;
     const details = [
         fact('Masked by rules', removals.length ? removals.map(r => tag(`${r.placeholder} ×${r.count}`)).join('') : `<span style="color:${C.muted}">Nothing needed masking</span>`),
         fact('Built from', esc(`${sessions || 0} ${sessions === 1 ? 'session' : 'sessions'}, ${sources.length} ${sources.length === 1 ? 'excerpt' : 'excerpts'}. Nothing else is sent.`)),
@@ -50,7 +51,7 @@ export function approvalEmailHtml(p: PrRow, config: Pick<Config, 'APPROVER_NAME'
     ].join('');
     const summary = p.draft_summary ? `<tr><td style="padding:36px 0 0">${eyebrow('Summary')}<p style="margin:0;font-size:18px;line-height:1.5;font-weight:500;color:${C.text};word-break:break-word;overflow-wrap:anywhere">${esc(p.draft_summary)}</p></td></tr>` : '';
     const flagged = flags.length ? `<tr><td style="padding:36px 0 0">${eyebrow('Flagged for you')}${flags.map(f => tag(`“${f}”`, true)).join('')}</td></tr>` : '';
-    const preheader = `${approver}, approve this answer for ${requester}? ${p.draft_summary ?? ''}`.trim();
+    const preheader = `Your approval is needed for ${requester}. ${p.draft_summary ?? ''}`.trim();
     return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light"><title>Approve this answer</title><style>details > summary.nb-s{display:list-item!important} details[open] .nb-dc{display:block!important;max-height:none!important;overflow:visible!important}</style></head>
 <body style="margin:0;padding:0;background:#ffffff;color:${C.text}">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(preheader)}</div>

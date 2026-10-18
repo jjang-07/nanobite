@@ -1,7 +1,7 @@
 import type { PrRow, EventRow } from '../db/db.ts';
 import type { Config } from '../config.ts';
 /**
- * Package-tracking view of one Nanobite request: seven stages, with the three gates labeled. Status is
+ * Request progress and the detailed gate history. Status is
  * derived from the request state; event timestamps add times. Works with no events (Inbox rows).
  */
 export type StepStatus = 'done' | 'current' | 'waiting' | 'stopped' | 'skipped';
@@ -10,13 +10,13 @@ export interface TrackStep {
     gate?: 1 | 2 | 3;
     title: string;
     status: StepStatus;
-    /** Short status text under the title, e.g. "Waiting for TK". */
+    /** Short status text under the title, e.g. "Waiting for your approval". */
     label: string;
     detail: string;
     time: string | null;
 }
 const KEYS: TrackStep['key'][] = ['asked', 'received', 'rules', 'minimize', 'human', 'delivered'];
-const EVENT_FOR: Record<TrackStep['key'], string[]> = { asked: ['request_sent', 'created'], received: ['received'], rules: ['sources_matched', 'rules_applied'], minimize: ['drafted'], human: ['decision', 'auto_merged'], delivered: ['delivered'] };
+const EVENT_FOR: Record<TrackStep['key'], string[]> = { asked: ['request_sent', 'created'], received: ['received'], rules: ['sources_matched', 'rules_applied'], minimize: ['drafted'], human: ['decision', 'auto_merged'], delivered: ['delivered', 'denied'] };
 const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 function list(value: string | null): any[] { try {
     const parsed = JSON.parse(value ?? '[]');
@@ -52,27 +52,37 @@ function progress(pr: PrRow, has: (kind: string) => boolean): { at: number; stop
         default: return { at: 0, stopped: false };
     }
 }
+/** Shared completion wording for the request header, timeline, and Inbox. */
+export function deliveryTitle(pr: PrRow): string | null {
+    if (pr.state === 'delivered' || pr.state === 'reported')
+        return pr.decision === 'edit' ? 'Delivered (edited)' : 'Delivered';
+    if (pr.state === 'denied')
+        return pr.capsule_sent_email_id || pr.capsule_inbound_email_id ? 'Delivered (denied)' : 'Delivering (denied)';
+    return null;
+}
 export function trackSteps(pr: PrRow, events: EventRow[], config?: Pick<Config, 'APPROVER_NAME'>): TrackStep[] {
-    const approver = config?.APPROVER_NAME || 'the approver', requester = personName(pr.on_behalf_of, 'The requester');
+    const requester = personName(pr.on_behalf_of, 'The requester');
     const firstAt = (kinds: string[]) => kinds.map(k => events.find(e => e.kind === k)?.at).find(Boolean);
     const has = (kind: string) => events.some(e => e.kind === kind);
     const { at, stopped } = progress(pr, has);
     const removals = list(pr.removals).map((r: any) => `${r?.placeholder} ×${Number(r?.count) || 0}`).join(', ');
     const sources = list(pr.matched_source_ids).length, flags = list(pr.draft_flagged).length;
-    const decided = pr.decision === 'auto' ? `Auto-approved under ${approver}'s rule` : pr.decision === 'edit' ? `Edited and approved by ${approver}` : pr.decision === 'approve_always' ? `Approved by ${approver}; future answers on this topic auto-approve` : `Approved by ${approver}`;
+    const decided = pr.decision === 'auto' ? 'Auto-approved under your rule' : pr.decision === 'edit' ? 'Edited and approved by you' : pr.decision === 'approve_always' ? 'Approved by you; future answers on this topic auto-approve' : 'Approved by you';
     const text: Record<TrackStep['key'], { title: string; gate?: 1 | 2 | 3; done: string; current: string; stopped?: string; stoppedDetail?: string }> = {
         asked: { title: 'Asked', done: `${requester}'s agent asked ${pr.responder_identity}`, current: 'Sending the question' },
         received: { title: 'Received', done: "The responder's agent picked it up", current: "Waiting for the responder's agent" },
         rules: { title: 'Rules', gate: 1, done: removals ? `Masked ${removals}` : 'Protected details masked', current: 'Masking protected details', stopped: 'No matching source', stoppedDetail: 'Nothing was shared.' },
-        minimize: { title: 'Minimize', gate: 2, done: `Smallest answer drafted${sources ? ` from ${sources} excerpts` : ''}${flags ? `; ${flags} ${flags === 1 ? 'phrase' : 'phrases'} flagged for ${approver}` : ''}`, current: 'Drafting the smallest answer', stopped: 'Drafting stopped', stoppedDetail: pr.decision_reason ?? 'See the timeline for the cause.' },
-        human: { title: 'Human', gate: 3, done: decided, current: `Waiting for ${approver}`, stopped: pr.state === 'failed' ? 'Stopped' : `Denied by ${approver}`, stoppedDetail: pr.decision_reason ?? 'Nothing was shared.' },
-        delivered: { title: 'Delivered', done: `Answer delivered to ${requester}'s agent`, current: `Delivering to ${requester}'s agent` },
+        minimize: { title: 'Minimize', gate: 2, done: `Smallest answer drafted${sources ? ` from ${sources} excerpts` : ''}${flags ? `; ${flags} ${flags === 1 ? 'phrase' : 'phrases'} flagged for your review` : ''}`, current: 'Drafting the smallest answer', stopped: 'Drafting stopped', stoppedDetail: pr.decision_reason ?? 'See the timeline for the cause.' },
+        human: { title: 'Human', gate: 3, done: decided, current: 'Waiting for your approval', stopped: pr.state === 'failed' ? 'Stopped' : 'Denied by you', stoppedDetail: pr.decision_reason ?? 'Nothing was shared.' },
+        delivered: { title: deliveryTitle(pr) ?? 'Delivered', done: `${pr.state === 'denied' ? 'Denial' : 'Answer'} delivered to ${requester}'s agent`, current: `Delivering ${pr.state === 'denied' ? 'the denial ' : ''}to ${requester}'s agent` },
     };
     return KEYS.map((key, i) => {
         const t = text[key], time = clock(firstAt(EVENT_FOR[key]));
         let status: StepStatus = i < at ? 'done' : i === at ? (stopped ? 'stopped' : 'current') : (stopped ? 'skipped' : 'waiting');
         if (pr.state === 'reported')
             status = 'done';
+        if (key === 'delivered' && pr.state === 'denied')
+            status = pr.capsule_sent_email_id || pr.capsule_inbound_email_id ? 'done' : 'current';
         const approvalSent = clock(firstAt(['approval_sent']));
         const label = status === 'done' ? (time ? `Done · ${time}` : 'Done') : status === 'current' ? t.current : status === 'stopped' ? (t.stopped ?? 'Stopped') : status === 'skipped' ? 'Not shared' : 'Waiting';
         const detail = status === 'done' ? t.done : status === 'stopped' ? (t.stoppedDetail ?? '') : status === 'current' && key === 'human' && approvalSent ? `Approval email sent ${approvalSent}` : '';
@@ -97,22 +107,38 @@ function gatesCheckpoint(gates: TrackStep[]): { status: StepStatus; label: strin
 }
 export function trackerHtml(pr: PrRow, events: EventRow[], config?: Pick<Config, 'APPROVER_NAME'>): string {
     const steps = trackSteps(pr, events, config), gates = steps.filter(s => s.gate), cp = gatesCheckpoint(gates);
-    const point = (s: TrackStep) => `<li class="track-step" data-anim-key="step-${s.key}" data-group="${GROUP[s.key]}" data-status="${s.status}"><span class="track-dot" aria-hidden="true"></span><span class="track-title">${escape(s.title)}</span><span class="track-label">${escape(shortLabel(s))}</span></li>`;
-    const subs = gates.map(g => `<li class="gate-sub" data-anim-key="step-${g.key}" data-status="${g.status}"><span class="gate-mark" aria-hidden="true"></span><span class="gate-name">${g.gate} ${escape(g.title)}</span><span class="gate-status">${escape(shortLabel(g))}</span></li>`).join('');
-    const checkpoint = `<li class="track-step gates-point" data-anim-key="step-gates" data-group="gate" data-status="${cp.status}"><span class="track-dot" aria-hidden="true"></span><span class="track-title">Three gates</span><span class="track-label">${escape(cp.label)}</span><ul class="gate-subs" aria-label="Three gates">${subs}</ul></li>`;
-    return `<section class="section tracking" aria-labelledby="track-heading"><h2 id="track-heading">Tracking</h2><ol class="track" aria-label="Request progress">${point(steps[0])}${point(steps[1])}${checkpoint}${point(steps[5])}</ol></section>`;
+    const humanDenied = pr.state === 'denied' && pr.decision === 'deny' && pr.decision_reason !== 'no_sources';
+    const approval = humanDenied ? { status: 'done' as const, label: 'Review complete' }
+        : cp.status === 'done' ? { ...cp, label: pr.decision === 'auto' ? 'Approval rule applied' : 'Review complete' } : cp;
+    const delivery = { ...steps[5], title: deliveryTitle(pr) ?? 'Delivery' };
+    let deliveryLabel = shortLabel(delivery);
+    if (pr.state === 'denied') {
+        deliveryLabel = pr.decision_reason === 'no_sources' ? 'No matching source' : 'Denied by you';
+    }
+    else if (pr.state === 'failed') {
+        delivery.title = 'Not shared';
+        deliveryLabel = 'Request stopped';
+    }
+    else if (['approved', 'delivered', 'reported'].includes(pr.state)) {
+        const decision = pr.decision === 'auto' ? 'Auto-approved under a rule'
+            : pr.decision === 'edit' ? 'Edited by you' : 'Approved by you';
+        deliveryLabel = pr.state === 'approved' ? `${decision} · Delivering` : decision;
+    }
+    const point = (s: TrackStep, label = shortLabel(s)) => `<li class="track-step" data-anim-key="step-${s.key}" data-group="${GROUP[s.key]}" data-status="${s.status}"><span class="track-dot" aria-hidden="true"></span><span class="track-title">${escape(s.title)}</span><span class="track-label">${escape(label)}</span></li>`;
+    const checkpoint = `<li class="track-step" data-anim-key="step-approval" data-group="gate" data-status="${approval.status}"><span class="track-dot" aria-hidden="true"></span><span class="track-title">Approval</span><span class="track-label">${escape(approval.label)}</span></li>`;
+    return `<section class="section tracking" aria-labelledby="track-heading"><h2 id="track-heading">Tracking</h2><ol class="track" aria-label="Request progress">${point(steps[0])}${point(steps[1])}${checkpoint}${point(delivery, deliveryLabel)}</ol></section>`;
 }
 /** The step-by-step record with times and details, shown at the bottom of the request page. */
 export function activityLogHtml(pr: PrRow, events: EventRow[], config?: Pick<Config, 'APPROVER_NAME'>): string {
     const rows = trackSteps(pr, events, config).filter(s => s.status !== 'waiting' && s.status !== 'skipped').map(s => `<li><div class="log-head"><strong>${s.gate ? `Gate ${s.gate} · ` : ''}${escape(s.title)}</strong><span class="note">${escape(s.time ?? '')}</span></div><p>${escape(s.status === 'done' ? s.detail : [s.label, s.detail].filter(Boolean).join(' · '))}</p></li>`).join('');
     return `<section class="section" aria-labelledby="log-heading"><h2 id="log-heading">Activity log</h2><ol class="activity-log">${rows || '<li class="muted">Nothing has happened yet.</li>'}</ol></section>`;
 }
-/** Seven-segment bar for an Inbox row, grouped 2 · 3 · 2; the state text next to it carries the meaning. */
+/** Six-segment bar for an Inbox row, grouped 2 · 3 · 1; the state text next to it carries the meaning. */
 export function miniTrack(pr: PrRow, config?: Pick<Config, 'APPROVER_NAME'>): string {
     return `<span class="mini-track" aria-hidden="true">${trackSteps(pr, [], config).map((s, i) => `<span data-anim-key="${escape(pr.id)}:${i}" data-group="${GROUP[s.key]}" data-status="${s.status}"></span>`).join('')}</span>`;
 }
 export const trackerStyles = `
-.track{list-style:none;padding:0;margin:22px 0 0;display:grid;grid-template-columns:1fr 1fr 1.6fr 1fr}
+.track{list-style:none;padding:0;margin:22px 0 0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
 .track-step{position:relative;min-width:0;padding:26px 16px 0 0;--on:var(--soft)}
 .track-step[data-group=gate]{--on:var(--state)}
 .track-step::before{content:"";position:absolute;top:7px;left:0;right:0;height:2px;background:var(--line)}
@@ -137,20 +163,6 @@ export const trackerStyles = `
 .track-step.just-done::before{transform-origin:left center;animation:line-fill .8s ease-out}
 .track-step.just-done .track-label{animation:label-in .5s ease-out}
 .mini-track span.just-done{animation:seg-pop .6s ease-out}
-/* The gates checkpoint lists its three gates; each row has its own small marker. */
-.gate-subs{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
-.gate-sub{display:grid;grid-template-columns:12px auto 1fr;align-items:center;gap:0 8px;font-size:14px}
-.gate-mark{width:10px;height:10px;border-radius:50%;border:2px solid #b8b8b8;background:#fff;box-sizing:border-box}
-.gate-sub[data-status=done] .gate-mark{background:var(--state);border-color:var(--state)}
-.gate-sub[data-status=current] .gate-mark{border-color:var(--state)}
-.gate-sub[data-status=stopped] .gate-mark{background:#181818;border-color:#181818}
-.gate-sub[data-status=skipped] .gate-mark{border-style:dashed}
-.gate-name{font-weight:600;color:#181818}
-.gate-status{color:var(--muted);font-size:13px}
-.gate-sub[data-status=current] .gate-status{color:var(--state);font-weight:600}
-.gate-sub[data-status=stopped] .gate-status{color:#181818;font-weight:600}
-.gate-sub.just-done .gate-mark{animation:step-pop .7s cubic-bezier(.2,.9,.3,1.4)}
-.gate-sub.just-done .gate-status{animation:label-in .5s ease-out}
 @keyframes step-pop{0%{transform:scale(.5)}55%{transform:scale(1.45)}100%{transform:scale(1)}}
 @keyframes step-burst{0%{transform:scale(.6);opacity:.9}100%{transform:scale(2.4);opacity:0}}
 @keyframes line-fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
@@ -158,7 +170,7 @@ export const trackerStyles = `
 @keyframes label-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @keyframes seg-pop{0%{transform:scaleY(1)}50%{transform:scaleY(2.6)}100%{transform:scaleY(1)}}
 @keyframes track-pulse{0%{transform:scale(.55);opacity:.7}100%{transform:scale(1.15);opacity:0}}
-@media(prefers-reduced-motion:reduce){.track-step[data-status=current] .track-dot::after{animation:none;opacity:.35}.just-done,.just-done .track-dot,.just-done .track-label,.just-done::before,.just-done .track-dot::after,.gate-sub.just-done .gate-mark,.gate-sub.just-done .gate-status{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.track-step[data-status=current] .track-dot::after{animation:none;opacity:.35}.just-done,.just-done .track-dot,.just-done .track-label,.just-done::before,.just-done .track-dot::after{animation:none!important}}
 .activity-log{list-style:none;padding:0;margin:16px 0 0}.activity-log>li{border-top:1px solid var(--line);padding:13px 0}
 .activity-log p{margin:2px 0 0;font-size:14px;color:var(--muted);overflow-wrap:anywhere}
 .log-head{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap;font-size:14px}.log-head strong{font-weight:500}

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { openDb, migrate, insertPr, updatePr, getPr, listEvents } from '../src/db/db.ts';
-import { buildApprovalEmail } from '../src/gates/approval.ts';
+import { buildApprovalEmail, parseDecision } from '../src/gates/approval.ts';
 import { setup, queued, incoming, config } from './helpers.ts';
 import { pollInbound, processReceived } from '../src/pipeline/responder.ts';
 const cfg = { ...config, APPROVER_NAME: 'TK' };
@@ -26,6 +26,14 @@ test('approval email: plain summary, exact answer, then Approve / Deny / Edit bu
         assert.ok(u, `button for ${cmd}`);
         assert.equal(decodeURIComponent(u.pathname), 'sdk-help@fair-fly.primitive.email');
         assert.match(decodeURIComponent(u.searchParams.get('subject') ?? ''), /\[Nanobite cpr_btn1\]/);
+        const body = u.searchParams.get('body')!;
+        assert.match(body, /Decision reason \(optional\):/);
+        assert.equal(parseDecision(body).decision, cmd);
+        assert.equal(parseDecision(body).reason, undefined);
+        if (cmd === 'edit') {
+            assert.match(body, /Answer to share:/);
+            assert.equal(parseDecision(body).text, row().draft_answer);
+        }
     }
     assert.match(decodeURIComponent(byBody.edit.searchParams.get('body')!), /Pass one idempotencyKey outside withRetry\(\)\./, 'edit opens a draft holding the current answer');
     assert.doesNotMatch(html, /Reply with one of these/i);
@@ -63,4 +71,12 @@ test('email labels are short, sections breathe, and Details is collapsed by defa
     assert.match(html, /<style>[^<]*details\[open\][^<]*<\/style>/);
     assert.match(html, /<div class="nb-dc" style="display:none[^"]*mso-hide:all/);
     assert.match(html, /<summary class="nb-s" style="display:none/);
+});
+
+test('a long edit opens empty fields rather than a placeholder that could be sent as an answer', () => {
+    const html = buildApprovalEmail({ ...row(), draft_answer: 'A long answer. '.repeat(400) }, cfg).bodyHtml;
+    const body = mailtos(html).map(u => u.searchParams.get('body')!).find(s => s.startsWith('edit'))!;
+    assert.match(body, /Decision reason \(optional\):/);
+    assert.match(body, /Answer to share:/);
+    assert.equal(parseDecision(body).decision, 'unrecognized');
 });

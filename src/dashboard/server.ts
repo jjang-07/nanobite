@@ -8,6 +8,11 @@ import { renderInbox, renderPr, renderError, renderInboxBody, renderPrBody, inbo
 import { loadConfig } from '../config.ts';
 import type { Config } from '../config.ts';
 import { listLocalInbox, submitLocalReply } from '../primitive/local.ts';
+import { renderRules } from './rules.ts';
+import type { RulesPageOptions } from './rules.ts';
+import { listProtectionRules, saveProtectionRule, setProtectionRuleEnabled } from '../gates/protection-store.ts';
+import { listApprovalRules, createManualApprovalRule, revokeScopedRule } from '../approval/rules-store.ts';
+import { applyRules, loadRules } from '../gates/rules.ts';
 async function readForm(req: IncomingMessage) { let body = ''; for await (const chunk of req) {
     body += chunk;
     if (Buffer.byteLength(body) > 32000)
@@ -17,6 +22,7 @@ export async function startDashboard(db: DatabaseSync, port: number, options: {
     config?: Config;
 } = {}): Promise<Server> {
     const config = options.config ?? loadConfig(), csrfToken = randomBytes(32).toString('hex');
+    const rulesPage = (extra: Partial<RulesPageOptions> = {}) => renderRules(listProtectionRules(db, config.RESPONDER_IDENTITY), listApprovalRules(db, config.RESPONDER_IDENTITY), { config, csrfToken, ...extra });
     const server = createServer(async (req, res) => {
         res.setHeader('content-type', 'text/html; charset=utf-8');
         res.setHeader('cache-control', 'no-store');
@@ -40,6 +46,10 @@ export async function startDashboard(db: DatabaseSync, port: number, options: {
                     res.setHeader('content-type', 'application/json; charset=utf-8');
                     res.end(JSON.stringify(url.searchParams.get('v') === version ? { version } : { version, html: html() }));
                 };
+                if (url.pathname === '/rules') {
+                    send(200, rulesPage({ notice: url.searchParams.get('notice') ?? undefined }));
+                    return;
+                }
                 if (url.pathname === '/') {
                     send(200, renderInbox(listPrs(db, { limit: 500 }), { csrfToken, config }));
                     return;
@@ -80,6 +90,52 @@ export async function startDashboard(db: DatabaseSync, port: number, options: {
             const form = await readForm(req), token = form.get('csrf') ?? '';
             if (token.length !== csrfToken.length || !timingSafeEqual(Buffer.from(token), Buffer.from(csrfToken))) {
                 send(403, 'Invalid form token. Refresh the Inbox.');
+                return;
+            }
+            if (url.pathname.startsWith('/rules/')) {
+                const edit = url.pathname.match(/^\/rules\/([1-9]\d{0,9})\/update$/);
+                const toggle = url.pathname.match(/^\/rules\/([1-9]\d{0,9})\/toggle$/);
+                const revoke = url.pathname.match(/^\/rules\/approval\/(rule_[a-f0-9-]+)\/revoke$/);
+                try {
+                    const input = { kind: form.get('kind') ?? '', pattern: form.get('pattern') ?? '', placeholder: form.get('placeholder') ?? '', note: form.get('note') ?? '' };
+                    let notice = '', anchor = 'custom-rules';
+                    if (url.pathname === '/rules/create') {
+                        saveProtectionRule(db, config.RESPONDER_IDENTITY, input);
+                        notice = 'created';
+                    }
+                    else if (edit) {
+                        saveProtectionRule(db, config.RESPONDER_IDENTITY, input, Number(edit[1]));
+                        notice = 'saved';
+                    }
+                    else if (toggle) {
+                        const enabled = form.get('enabled');
+                        if (enabled !== '0' && enabled !== '1') throw new Error('Choose Enable or Disable.');
+                        setProtectionRuleEnabled(db, config.RESPONDER_IDENTITY, Number(toggle[1]), enabled === '1');
+                        notice = 'toggled';
+                    }
+                    else if (url.pathname === '/rules/preview') {
+                        const sample = form.get('sample') ?? '';
+                        if (!sample.trim() || sample.length > 8000) throw new Error('Enter sample text, up to 8,000 characters.');
+                        const result = applyRules(sample, loadRules(db, config.RESPONDER_IDENTITY));
+                        send(200, rulesPage({ preview: { input: sample, text: result.text, count: result.removals.reduce((n, r) => n + r.count, 0) } }));
+                        return;
+                    }
+                    else if (url.pathname === '/rules/approval/create') {
+                        createManualApprovalRule(db, config.RESPONDER_IDENTITY, form.get('requester') ?? '', form.get('topic') ?? '', config.APPROVER_EMAIL, form.get('confirmed') === 'yes');
+                        notice = 'granted'; anchor = 'approval-rules';
+                    }
+                    else if (revoke) {
+                        revokeScopedRule(db, config.RESPONDER_IDENTITY, revoke[1]);
+                        notice = 'revoked'; anchor = 'approval-rules';
+                    }
+                    else { send(404, 'Rule action not found'); return; }
+                    res.writeHead(303, { location: `/rules?notice=${notice}#${anchor}` });
+                    res.end();
+                }
+                catch (error) {
+                    res.statusCode = 400;
+                    res.end(rulesPage({ error: error instanceof Error ? error.message : 'Could not save the rule.', form: Object.fromEntries(form), editingId: edit ? Number(edit[1]) : undefined }));
+                }
                 return;
             }
             // Requests come only from agents through MCP; the dashboard never files them.

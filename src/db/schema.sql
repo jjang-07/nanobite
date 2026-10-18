@@ -14,16 +14,16 @@ CREATE TABLE IF NOT EXISTS context_prs (
   request_inbound_email_id TEXT,             -- Primitive inbound id (responder side)
   request_thread_id TEXT,
   matched_source_ids TEXT,                   -- JSON string[]
-  draft_answer TEXT,                         -- gate 2 output after gate 1 (what TK sees)
+  draft_answer TEXT,                         -- gate 2 output after gate 1 (what the reviewer sees)
   draft_summary TEXT,                        -- plain-language summary for the approver; never sent
-  draft_flagged TEXT,                        -- JSON string[] phrases the model flagged for TK
+  draft_flagged TEXT,                        -- JSON string[] phrases the model flagged for review
   removals TEXT,                             -- JSON Removal[] {placeholder,count}
-  approval_sent_email_id TEXT,               -- email to TK
+  approval_sent_email_id TEXT,               -- email to the reviewer
   approval_thread_id TEXT,
   decision TEXT,                             -- approve|approve_always|deny|edit|auto
   decision_reason TEXT,
   approved_text TEXT,                        -- the capsule, byte for byte
-  approver TEXT,                             -- TK's address
+  approver TEXT,                             -- reviewer's address
   decided_at TEXT,
   capsule_sent_email_id TEXT,                -- reply to the request (responder side)
   capsule_inbound_email_id TEXT,             -- as received on the requester side
@@ -53,7 +53,9 @@ CREATE TABLE IF NOT EXISTS denylist (
   kind TEXT NOT NULL,                        -- literal|regex|sentence
   pattern TEXT NOT NULL,
   placeholder TEXT NOT NULL,
-  note TEXT
+  note TEXT,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  is_custom INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS rules (                -- auto-merge rules created by "approve always"

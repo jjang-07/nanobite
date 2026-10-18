@@ -58,6 +58,11 @@ export function migrate(db: DatabaseSync) {
     const have = new Set(db.prepare('PRAGMA table_info(context_prs)').all().map((c: any) => String(c.name)));
     if (!have.has('draft_summary'))
         db.exec('ALTER TABLE context_prs ADD COLUMN draft_summary TEXT');
+    const ruleColumns = new Set(db.prepare('PRAGMA table_info(denylist)').all().map((c: any) => String(c.name)));
+    if (!ruleColumns.has('enabled'))
+        db.exec('ALTER TABLE denylist ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1');
+    if (!ruleColumns.has('is_custom'))
+        db.exec('ALTER TABLE denylist ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0');
 }
 function entries(value: Record<string, unknown>) {
     return Object.entries(value).filter(([, v]) => v !== undefined).map(([k, v]) => {

@@ -22,6 +22,8 @@ test('approval email: styled HTML with the exact answer, decision buttons, and c
         assert.ok(html.includes(tag.replace('×', '&times;')) || html.includes(tag), tag);
     assert.doesNotMatch(html, /<script|box-shadow|gradient|<img/i);
     assert.match(mail.bodyText, /DRAFT ANSWER/, 'plain-text alternative remains');
+    assert.match(html, /Your approval is needed/);
+    assert.doesNotMatch(html, /\bTK\b/);
     assert.equal(parseDecision('approve\n\n________________________________\nFrom: sdk-help@fair-fly.primitive.email').decision, 'approve');
 });
 test('approval email escapes the draft so source text can never inject markup', () => {
