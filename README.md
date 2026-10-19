@@ -7,6 +7,8 @@
 Built at YC's *Make Something Agents Want* hackathon (October 17–18, 2026).
 
 > **Demo video:** https://www.youtube.com/watch?v=LEdAK5UOlK4
+>
+> Awarded: Best Agent Communication Setup with Primitive.dev 
 
 ## The problem
 
